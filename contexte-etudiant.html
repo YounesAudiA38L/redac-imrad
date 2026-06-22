@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contexte étudiant - Redac-IMRaD</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div data-main-nav></div>
+    <main class="app-shell">
+      <header class="topbar" aria-label="En-tête">
+        <div>
+          <p class="eyebrow">Sois fière de ton mémoire</p>
+          <h1>Contexte étudiant</h1>
+        </div>
+        <a class="secondary-action" href="index.html">Retour à l’accueil</a>
+      </header>
+
+      <section class="status-band" aria-labelledby="context-title">
+        <div>
+          <p class="eyebrow">Préparation de la relecture</p>
+          <h2 id="context-title">Informations utiles avant la visio</h2>
+          <p>
+            Cette fiche aide Audrey à préparer le Point Mémoire 60 minutes. Les informations restent
+            locales et servent uniquement d’aide à la relecture.
+          </p>
+        </div>
+        <div class="status-panel" aria-label="Mémoire concerné">
+          <span class="status-label">Mémoire</span>
+          <strong id="context-file-name">Non trouvé</strong>
+          <span class="status-note" id="context-status">Contexte à renseigner</span>
+        </div>
+      </section>
+
+      <form id="student-context-form" class="context-form">
+        <fieldset class="form-section">
+          <legend>Identité et formation</legend>
+          <div class="form-grid">
+            <label class="field">
+              <span>Prénom et nom de l’étudiant</span>
+              <input type="text" name="identiteEtudiant" autocomplete="name" />
+            </label>
+            <label class="field">
+              <span>Adresse mail</span>
+              <input type="email" name="email" autocomplete="email" />
+            </label>
+            <label class="field">
+              <span>IFMK</span>
+              <input type="text" name="ifmk" />
+            </label>
+            <label class="field">
+              <span>Niveau</span>
+              <select name="niveau">
+                <option value="">Sélectionner</option>
+                <option>K3</option>
+                <option>K4</option>
+                <option>Rattrapage</option>
+                <option>Autre</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Situation et échéances</legend>
+          <div class="form-grid">
+            <label class="field full-width">
+              <span>Situation actuelle</span>
+              <textarea name="situationActuelle" rows="4"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Échéance importante</span>
+              <input type="text" name="echeanceImportante" placeholder="Date, rendu ou étape importante" />
+            </label>
+            <label class="field range-field">
+              <span>Niveau d’avancement : <output id="progress-output">0</output> / 10</span>
+              <input id="progress-range" type="range" name="niveauAvancement" min="0" max="10" value="0" />
+            </label>
+            <label class="field range-field">
+              <span>Niveau de stress : <output id="stress-output">0</output> / 10</span>
+              <input id="stress-range" type="range" name="niveauStress" min="0" max="10" value="0" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Sujet et méthode</legend>
+          <div class="form-grid">
+            <label class="field">
+              <span>Thème général</span>
+              <input type="text" name="themeGeneral" />
+            </label>
+            <label class="field">
+              <span>Sujet actuel</span>
+              <input type="text" name="sujetActuel" />
+            </label>
+            <label class="field">
+              <span>Sujet validé</span>
+              <select name="sujetValide">
+                <option value="">Sélectionner</option>
+                <option>Oui</option>
+                <option>Non</option>
+                <option>En attente</option>
+                <option>Je ne sais pas</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Type de mémoire</span>
+              <select name="typeMemoire">
+                <option value="">Sélectionner</option>
+                <option>Revue de littérature</option>
+                <option>Revue systématique</option>
+                <option>Étude quantitative</option>
+                <option>Étude qualitative</option>
+                <option>Étude observationnelle</option>
+                <option>Cas clinique</option>
+                <option>Mémoire professionnel</option>
+                <option>Autre</option>
+              </select>
+            </label>
+            <label class="field full-width">
+              <span>Question de recherche actuelle</span>
+              <textarea name="questionRecherche" rows="4"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Méthode envisagée</span>
+              <textarea name="methodeEnvisagee" rows="4"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Recherche bibliographique</legend>
+          <div class="form-grid">
+            <label class="field">
+              <span>Recherche bibliographique commencée</span>
+              <select name="rechercheBibliographiqueCommencee">
+                <option value="">Sélectionner</option>
+                <option>Oui</option>
+                <option>Non</option>
+                <option>Un peu</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Nombre d’articles sélectionnés</span>
+              <input type="number" name="nombreArticles" min="0" inputmode="numeric" />
+            </label>
+            <label class="field full-width">
+              <span>Bases de données utilisées</span>
+              <textarea name="basesDonnees" rows="3" placeholder="Ex. PubMed, PEDro, Cochrane Library"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Mots-clés</span>
+              <textarea name="motsCles" rows="3"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Avancement et préparation de la visio</legend>
+          <div class="field full-width">
+            <span>Parties déjà commencées</span>
+            <div class="checkbox-grid">
+              <label><input type="checkbox" name="partiesCommencees" value="Introduction" /> Introduction</label>
+              <label><input type="checkbox" name="partiesCommencees" value="Méthode" /> Méthode</label>
+              <label><input type="checkbox" name="partiesCommencees" value="Résultats" /> Résultats</label>
+              <label><input type="checkbox" name="partiesCommencees" value="Discussion" /> Discussion</label>
+              <label><input type="checkbox" name="partiesCommencees" value="Conclusion" /> Conclusion</label>
+              <label><input type="checkbox" name="partiesCommencees" value="Bibliographie" /> Bibliographie</label>
+            </div>
+          </div>
+          <div class="form-grid context-spacing">
+            <label class="field full-width">
+              <span>Blocage principal</span>
+              <textarea name="blocagePrincipal" rows="4"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Priorité pour la visio</span>
+              <textarea name="prioriteVisio" rows="4"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Question principale 1</span>
+              <textarea name="questionEtudiant1" rows="3"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Question principale 2</span>
+              <textarea name="questionEtudiant2" rows="3"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Question principale 3</span>
+              <textarea name="questionEtudiant3" rows="3"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Documents et notes</legend>
+          <div class="form-grid">
+            <label class="field full-width">
+              <span>Documents transmis</span>
+              <textarea name="documentsTransmis" rows="4"></textarea>
+            </label>
+            <label class="field full-width">
+              <span>Notes de relecture</span>
+              <textarea name="notesRelecture" rows="7"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="form-actions sticky-actions">
+          <button class="primary-action" type="submit">Enregistrer le contexte étudiant</button>
+          <a class="secondary-action" href="index.html">Retour à l’accueil</a>
+        </div>
+        <p id="context-message" class="form-message" role="status" aria-live="polite" hidden></p>
+      </form>
+    </main>
+    <script src="navigation.js?v=7" defer></script>
+    <script src="contexte-etudiant.js?v=6" defer></script>
+  </body>
+</html>

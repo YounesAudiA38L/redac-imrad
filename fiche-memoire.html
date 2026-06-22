@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fiche mémoire - Redac-IMRaD</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div data-main-nav></div>
+    <main class="app-shell">
+      <header class="topbar" aria-label="En-tete">
+        <div>
+          <p class="eyebrow">Centre de contrôle</p>
+          <h1>Fiche mémoire</h1>
+        </div>
+        <a class="secondary-action" href="index.html">Retour à l’accueil</a>
+      </header>
+
+      <section class="status-band" aria-labelledby="fiche-title">
+        <div>
+          <p class="eyebrow">Mémoire sélectionné</p>
+          <h2 id="fiche-title">Aide à la relecture IMRaD</h2>
+          <p>
+            Cette fiche rassemble les informations du mémoire et l’avancement prévu de l’analyse à
+            vérifier. Aucune analyse automatique, lecture de fichier ou score n’est généré à cette
+            étape.
+          </p>
+        </div>
+        <div class="status-panel" aria-label="Etat du mémoire">
+          <span class="status-label">Statut</span>
+          <strong>Importé</strong>
+          <span class="status-note">Analyse non commencée</span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="summary-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Résumé</p>
+            <h2 id="summary-title">Informations du mémoire</h2>
+          </div>
+        </div>
+
+        <dl class="memoire-summary">
+          <div>
+            <dt>Étudiant</dt>
+            <dd>Clara Dupont</dd>
+          </div>
+          <div>
+            <dt>Titre</dt>
+            <dd>Effets du renforcement excentrique dans la tendinopathie d’Achille</dd>
+          </div>
+          <div>
+            <dt>Type</dt>
+            <dd>Revue de littérature</dd>
+          </div>
+          <div>
+            <dt>Niveau</dt>
+            <dd>K4</dd>
+          </div>
+          <div class="full-width">
+            <dt>Statut</dt>
+            <dd>Mémoire importé — analyse non commencée</dd>
+          </div>
+        </dl>
+
+        <div class="form-actions fiche-actions" aria-label="Actions sur la fiche mémoire">
+          <a class="secondary-action" href="index.html">Retour à l’accueil</a>
+          <a class="secondary-action" href="import-memoire.html">Modifier les informations</a>
+          <button class="primary-action" type="button" disabled>Préparer le découpage IMRaD</button>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="progress-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Conformité IMRaD</p>
+            <h2 id="progress-title">Avancement de l’analyse</h2>
+          </div>
+        </div>
+
+        <div class="analysis-grid">
+          <article class="analysis-card">
+            <div>
+              <h3>Introduction</h3>
+              <p>Non analysée</p>
+            </div>
+            <button class="secondary-action" type="button" disabled>Ouvrir l’analyse</button>
+          </article>
+          <article class="analysis-card">
+            <div>
+              <h3>Méthode</h3>
+              <p>Non analysée</p>
+            </div>
+            <button class="secondary-action" type="button" disabled>Ouvrir l’analyse</button>
+          </article>
+          <article class="analysis-card">
+            <div>
+              <h3>Résultats</h3>
+              <p>Non analysés</p>
+            </div>
+            <button class="secondary-action" type="button" disabled>Ouvrir l’analyse</button>
+          </article>
+          <article class="analysis-card">
+            <div>
+              <h3>Discussion</h3>
+              <p>Non analysée</p>
+            </div>
+            <button class="secondary-action" type="button" disabled>Ouvrir l’analyse</button>
+          </article>
+          <article class="analysis-card">
+            <div>
+              <h3>Conclusion</h3>
+              <p>Non analysée</p>
+            </div>
+            <button class="secondary-action" type="button" disabled>Ouvrir l’analyse</button>
+          </article>
+          <article class="analysis-card">
+            <div>
+              <h3>Bibliographie</h3>
+              <p>Non analysée</p>
+            </div>
+            <button class="secondary-action" type="button" disabled>Ouvrir l’analyse</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="notes-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Relecture</p>
+            <h2 id="notes-title">Notes de relecture</h2>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Notes</span>
+          <textarea rows="7" placeholder="Ajouter ici les observations, questions ou points à vérifier lors de la relecture."></textarea>
+        </label>
+      </section>
+
+      <section class="workspace" aria-labelledby="alerts-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Points de vigilance</p>
+            <h2 id="alerts-title">Alertes méthodologiques</h2>
+          </div>
+        </div>
+        <p class="empty-state">
+          Aucune alerte méthodologique générée pour le moment. Les alertes apparaîtront après
+          l’analyse des sections.
+        </p>
+      </section>
+    </main>
+    <script src="navigation.js?v=7" defer></script>
+  </body>
+</html>

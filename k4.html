@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Accompagnement K4 - Redac-IMRaD</title><link rel="stylesheet" href="styles.css" /></head>
+  <body>
+    <div data-main-nav data-active="k4"></div>
+    <main class="app-shell">
+      <header class="topbar"><div><p class="eyebrow">Cadrage du mémoire</p><h1>Accompagnement K4</h1></div><a class="primary-action" href="index.html?new=k4">Ajouter un étudiant accompagné</a></header>
+      <section class="status-band"><div><p class="eyebrow">Suivi des accompagnements</p><h2>Étudiants du parcours K4</h2><p>Les informations communes et le suivi K4 proviennent des fiches créées depuis l’Accueil.</p></div><div class="status-panel"><span class="status-label">Étudiants</span><strong data-parcours-count>0</strong><span class="status-note">K4</span></div></section>
+      <section class="workspace" aria-labelledby="k4-config-title"><div class="section-heading"><div><p class="eyebrow">Configuration K4</p><h2 id="k4-config-title">Livrables K4</h2></div></div><div class="sync-controls"><label class="field sync-endpoint-field"><span>URL Apps Script livrables K4</span><input id="k4-livrables-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label><button class="secondary-action" type="button" id="save-k4-livrables-endpoint">Enregistrer l’URL</button></div><p class="sync-note">Une seule URL Apps Script suffit. Le script se chargera de générer les documents sélectionnés à partir des modèles Google Docs configurés côté Google.</p><p class="sync-note">Le front-end prépare uniquement la demande de création des documents et du brouillon. Aucun envoi n’est effectué sans vérification par Audrey.</p><p id="k4-livrables-global-status" class="form-message" role="status" aria-live="polite" hidden></p></section>
+      <section class="workspace"><div class="section-heading"><div><p class="eyebrow">Fiches étudiant</p><h2>Étudiants accompagnés</h2></div></div><div class="student-grid k4-student-grid" data-parcours-students="k4" aria-live="polite"></div></section>
+    </main>
+    <script src="navigation.js?v=8" defer></script><script src="js/storage.js?v=9" defer></script><script src="parcours.js?v=12" defer></script><script src="js/livrables-k4.js?v=12" defer></script>
+  </body>
+</html>

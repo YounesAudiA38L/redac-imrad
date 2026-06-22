@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Accueil - Redac-IMRaD</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div data-main-nav data-active="accueil"></div>
+    <main class="app-shell">
+      <header class="topbar" aria-label="En-tête">
+        <div><p class="eyebrow">Sois fière de ton mémoire</p><h1>Accueil</h1></div>
+        <button class="primary-action" type="button" id="add-student-trigger">Ajouter un étudiant accompagné</button>
+      </header>
+
+      <section class="status-band" aria-labelledby="welcome-title">
+        <div><p class="eyebrow">Espace de travail Audrey</p><h2 id="welcome-title">Suivi centralisé des étudiants accompagnés</h2><p>Créez une fiche unique, choisissez le parcours et retrouvez ensuite l’étudiant dans l’espace Point Mémoire, K4, K5 ou Rattrapage.</p></div>
+        <div class="status-panel"><span class="status-label">Étudiants actifs</span><strong id="active-student-count">0</strong><span class="status-note">Fiches enregistrées localement</span></div>
+      </section>
+
+      <section class="workspace student-form-workspace" id="student-form-workspace" aria-labelledby="student-form-title" hidden>
+        <div class="section-heading"><div><p class="eyebrow">Fiche étudiant</p><h2 id="student-form-title">Nouvel étudiant accompagné</h2></div><button class="secondary-action compact-action" type="button" id="close-student-form">Fermer</button></div>
+        <form id="student-form" class="context-form">
+          <input type="hidden" name="studentId" />
+          <fieldset class="form-section">
+            <legend>Informations communes</legend>
+            <div class="form-grid">
+              <label class="field"><span>Prénom</span><input name="prenom" type="text" required /></label>
+              <label class="field"><span>Nom</span><input name="nom" type="text" required /></label>
+              <label class="field"><span>Adresse mail</span><input name="email" type="email" /></label>
+              <label class="field"><span>IFMK</span><input name="ifmk" type="text" /></label>
+              <label class="field"><span>Téléphone</span><input name="telephone" type="tel" /></label>
+              <label class="field"><span>Date de début d’accompagnement</span><input name="dateDebut" type="date" /></label>
+              <label class="field full-width"><span>Thématique générale du mémoire</span><input name="thematiqueMemoire" type="text" /></label>
+              <label class="field"><span>Parcours choisi</span><select name="parcours" id="student-parcours" required><option value="">Sélectionner</option><option value="point-memoire">Point Mémoire</option><option value="k4">K4</option><option value="k5">K5</option><option value="rattrapage">Rattrapage</option></select></label>
+              <label class="field"><span>Statut</span><select name="statut"><option>En cours</option><option>En attente</option><option>Archivé</option></select></label>
+              <label class="field full-width"><span>Notes initiales</span><textarea name="notesInitiales" rows="5"></textarea></label>
+              <label class="field full-width"><span>Importer le mémoire <small>(optionnel, DOCX recommandé)</small></span><input id="student-memoire-file" name="memoire" type="file" accept=".pdf,.docx" /><small id="student-file-status">Aucun fichier sélectionné.</small></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="form-section parcours-fields" data-parcours-fields="point-memoire" hidden>
+            <legend>Point Mémoire 60 minutes</legend>
+            <div class="form-grid">
+              <label class="field full-width"><span>Synthèse du questionnaire pré-visio</span><textarea name="pointSynthese" rows="6"></textarea></label>
+              <label class="field full-width"><span>Question principale 1</span><textarea name="pointQuestion1" rows="3"></textarea></label>
+              <label class="field full-width"><span>Question principale 2</span><textarea name="pointQuestion2" rows="3"></textarea></label>
+              <label class="field full-width"><span>Question principale 3</span><textarea name="pointQuestion3" rows="3"></textarea></label>
+              <label class="field full-width"><span>Notes recueillies pendant l’appel ou la visio</span><textarea name="pointNotesVisio" rows="8"></textarea></label>
+            </div>
+            <div id="student-point-axes" class="axis-grid context-spacing"></div>
+          </fieldset>
+
+          <fieldset class="form-section parcours-fields" data-parcours-fields="k4" hidden>
+            <legend>Suivi K4</legend>
+            <div class="form-grid">
+              <label class="field full-width"><span>Cadrage du sujet</span><textarea name="k4Cadrage" rows="5"></textarea></label>
+              <label class="field full-width"><span>Formulation actuelle du sujet</span><textarea name="k4Sujet" rows="4"></textarea></label>
+              <label class="field full-width"><span>Première question de recherche</span><textarea name="k4Question" rows="4"></textarea></label>
+              <label class="field full-width"><span>Choix de méthode</span><textarea name="k4Methode" rows="5"></textarea></label>
+              <label class="field full-width"><span>Premiers articles</span><textarea name="k4Articles" rows="5"></textarea></label>
+              <label class="field full-width"><span>Feuille de route vers K5</span><textarea name="k4FeuilleRoute" rows="6"></textarea></label>
+            </div>
+            <div class="field context-spacing"><span>Documents à fournir</span><div class="checkbox-grid">
+              <label><input type="checkbox" name="k4Documents" value="Fiche de cadrage du sujet" /> Fiche de cadrage du sujet</label><label><input type="checkbox" name="k4Documents" value="Trame de question de recherche" /> Trame de question de recherche</label><label><input type="checkbox" name="k4Documents" value="Liste de mots-clés prête à utiliser" /> Liste de mots-clés prête à utiliser</label><label><input type="checkbox" name="k4Documents" value="Planning K4 personnalisé" /> Planning K4 personnalisé</label><label><input type="checkbox" name="k4Documents" value="Mini-feuille de route pour entrer en K5" /> Mini-feuille de route pour entrer en K5</label>
+            </div></div>
+          </fieldset>
+
+          <fieldset class="form-section parcours-fields" data-parcours-fields="k5" hidden>
+            <legend>Suivi K5</legend>
+            <div class="form-grid">
+              <label class="field full-width"><span>Cohérence sujet / problématique / méthode</span><textarea name="k5Coherence" rows="5"></textarea></label><label class="field full-width"><span>Structure IMRaD</span><textarea name="k5Structure" rows="5"></textarea></label><label class="field full-width"><span>Bibliographie</span><textarea name="k5Bibliographie" rows="5"></textarea></label><label class="field full-width"><span>Résultats</span><textarea name="k5Resultats" rows="5"></textarea></label><label class="field full-width"><span>Discussion</span><textarea name="k5Discussion" rows="5"></textarea></label><label class="field full-width"><span>Préparation soutenance</span><textarea name="k5Soutenance" rows="5"></textarea></label><label class="field full-width"><span>Comptes rendus de visio</span><textarea name="k5ComptesRendus" rows="7"></textarea></label>
+            </div>
+            <div class="field context-spacing"><span>Documents à fournir</span><div class="checkbox-grid">
+              <label><input type="checkbox" name="k5Documents" value="Feuille de route personnalisée dès la visio 1" /> Feuille de route personnalisée dès la visio 1</label><label><input type="checkbox" name="k5Documents" value="Checklist de cohérence du mémoire" /> Checklist de cohérence du mémoire</label><label><input type="checkbox" name="k5Documents" value="Planning de rédaction semaine par semaine" /> Planning de rédaction semaine par semaine</label><label><input type="checkbox" name="k5Documents" value="Grille de préparation soutenance" /> Grille de préparation soutenance</label><label><input type="checkbox" name="k5Documents" value="Compte-rendu après chaque visio individuelle" /> Compte-rendu après chaque visio individuelle</label><label><input type="checkbox" name="k5Documents" value="Autres documents à venir" /> Autres documents à venir</label>
+            </div></div>
+          </fieldset>
+
+          <fieldset class="form-section parcours-fields" data-parcours-fields="rattrapage" hidden>
+            <legend>Suivi Rattrapage</legend>
+            <div class="form-grid">
+              <label class="field full-width"><span>Retours du jury</span><textarea name="rattrapageRetours" rows="6"></textarea></label><label class="field full-width"><span>Corrections demandées</span><textarea name="rattrapageCorrections" rows="5"></textarea></label><label class="field full-width"><span>Corrections prioritaires</span><textarea name="rattrapagePriorites" rows="5"></textarea></label><label class="field full-width"><span>Incohérences majeures</span><textarea name="rattrapageIncoherences" rows="5"></textarea></label><label class="field full-width"><span>Plan de reprise</span><textarea name="rattrapagePlan" rows="6"></textarea></label><label class="field full-width"><span>Préparation orale / défense du raisonnement</span><textarea name="rattrapageOral" rows="6"></textarea></label>
+            </div>
+            <div class="field context-spacing"><span>Documents à fournir</span><div class="checkbox-grid">
+              <label><input type="checkbox" name="rattrapageDocuments" value="Mémoire annoté ou dernière version" /> Mémoire annoté ou dernière version</label><label><input type="checkbox" name="rattrapageDocuments" value="Retours écrits du jury" /> Retours écrits du jury</label><label><input type="checkbox" name="rattrapageDocuments" value="Grille d’évaluation si disponible" /> Grille d’évaluation si disponible</label><label><input type="checkbox" name="rattrapageDocuments" value="Consignes de l’IFMK" /> Consignes de l’IFMK</label><label><input type="checkbox" name="rattrapageDocuments" value="Ancien plan du mémoire" /> Ancien plan du mémoire</label><label><input type="checkbox" name="rattrapageDocuments" value="Nouvelle proposition de plan" /> Nouvelle proposition de plan</label><label><input type="checkbox" name="rattrapageDocuments" value="Questions ou incompréhensions de l’étudiant" /> Questions ou incompréhensions de l’étudiant</label>
+            </div></div>
+          </fieldset>
+
+          <div class="form-actions"><button class="primary-action" type="submit" id="save-student-button">Créer la fiche étudiant</button><button class="secondary-action" type="button" id="cancel-student-form">Annuler</button></div>
+          <p class="form-message" id="student-form-message" role="status" aria-live="polite" hidden></p>
+        </form>
+      </section>
+
+      <section class="workspace" aria-labelledby="students-title">
+        <div class="section-heading"><div><p class="eyebrow">Accompagnements</p><h2 id="students-title">Étudiants accompagnés</h2></div></div>
+        <div class="filter-bar" role="group" aria-label="Filtrer les étudiants par parcours"><button class="filter-button active" type="button" data-student-filter="tous" aria-pressed="true">Tous</button><button class="filter-button" type="button" data-student-filter="point-memoire" aria-pressed="false">Point Mémoire</button><button class="filter-button" type="button" data-student-filter="k4" aria-pressed="false">K4</button><button class="filter-button" type="button" data-student-filter="k5" aria-pressed="false">K5</button><button class="filter-button" type="button" data-student-filter="rattrapage" aria-pressed="false">Rattrapage</button></div>
+        <div class="student-grid" id="student-list" aria-live="polite"></div>
+      </section>
+
+      <section class="workspace" aria-labelledby="notifications-title"><div class="section-heading"><div><p class="eyebrow">À venir</p><h2 id="notifications-title">Notifications</h2></div></div><p class="empty-state">Aucune notification pour le moment.</p></section>
+    </main>
+    <script src="navigation.js?v=8" defer></script>
+    <script src="js/storage.js?v=9" defer></script>
+    <script src="grille-point-memoire.js?v=6" defer></script>
+    <script src="js/livrables-k4.js?v=12" defer></script>
+    <script src="accueil.js?v=12" defer></script>
+  </body>
+</html>

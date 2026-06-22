@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Point Mémoire - Redac-IMRaD</title><link rel="stylesheet" href="styles.css" /></head>
+  <body>
+    <div data-main-nav data-active="point-memoire"></div>
+    <main class="app-shell">
+      <header class="topbar"><div><p class="eyebrow">Sois fière de ton mémoire</p><h1>Point Mémoire 60 minutes</h1></div><a class="primary-action" href="index.html?new=point-memoire">Ajouter un étudiant accompagné</a></header>
+      <section class="status-band"><div><p class="eyebrow">Suivi des accompagnements</p><h2>Étudiants du parcours Point Mémoire</h2><p>Retrouvez les fiches déjà créées depuis l’Accueil et leurs informations de préparation pré-visio.</p></div><div class="status-panel"><span class="status-label">Étudiants</span><strong data-parcours-count>0</strong><span class="status-note">Point Mémoire</span></div></section>
+
+      <section class="workspace" aria-labelledby="questionnaire-sync-title">
+        <div class="section-heading"><div><p class="eyebrow">Synchronisation locale</p><h2 id="questionnaire-sync-title">Nouveaux questionnaires pré-visio</h2></div></div>
+        <div class="sync-controls">
+          <label class="field sync-endpoint-field"><span>URL de connexion Google Sheet</span><input id="questionnaire-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+          <div class="form-actions sync-actions"><button class="primary-action" type="button" id="save-and-check-questionnaires">Vérifier les nouveaux questionnaires</button><button class="secondary-action" type="button" id="check-questionnaires-now">Vérifier maintenant</button></div>
+        </div>
+        <p class="sync-note">La vérification fonctionne uniquement pendant que cet onglet est ouvert. Elle s’arrête lorsque la page est fermée.</p>
+        <p id="questionnaire-sync-status" class="form-message sync-status" role="status" aria-live="polite">Renseignez l’URL Apps Script pour commencer.</p>
+        <div id="questionnaire-response-list" class="questionnaire-list" aria-live="polite"></div>
+      </section>
+
+      <section class="workspace"><div class="section-heading"><div><p class="eyebrow">Fiches étudiant</p><h2>Étudiants accompagnés</h2></div></div><div class="student-grid" data-parcours-students="point-memoire" aria-live="polite"></div></section>
+    </main>
+    <script src="navigation.js?v=8" defer></script><script src="js/storage.js?v=9" defer></script><script src="grille-point-memoire.js?v=6" defer></script><script src="js/questionnaire-sync.js?v=10" defer></script><script src="parcours.js?v=9" defer></script>
+  </body>
+</html>

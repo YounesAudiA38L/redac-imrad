@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Importer un mémoire - Redac-IMRaD</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div data-main-nav></div>
+    <main class="app-shell">
+      <header class="topbar" aria-label="En-tete">
+        <div>
+          <p class="eyebrow">Import</p>
+          <h1>Importer un mémoire</h1>
+        </div>
+        <a class="secondary-action" href="index.html">Retour à l’accueil</a>
+      </header>
+
+      <section class="status-band import-intro" aria-labelledby="import-title">
+        <div>
+          <p class="eyebrow">Nouvelle fiche</p>
+          <h2 id="import-title">Informations de base</h2>
+          <p>
+            Ajoutez ici les informations de base du mémoire. L’analyse de conformité IMRaD sera
+            réalisée dans les étapes suivantes et devra toujours être vérifiée humainement.
+          </p>
+        </div>
+        <div class="status-panel" aria-label="Etat de l'import">
+          <span class="status-label">Etape actuelle</span>
+          <strong>Import</strong>
+          <span class="status-note">Aucune analyse automatique</span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="form-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Mémoire</p>
+            <h2 id="form-title">Créer une fiche mémoire</h2>
+          </div>
+        </div>
+
+        <form class="memoire-form" id="memoire-form" action="fiche-memoire.html" method="get" novalidate>
+          <div class="form-grid">
+            <label class="field">
+              <span>Nom de l’étudiant</span>
+              <input type="text" name="nom" autocomplete="family-name" required />
+            </label>
+
+            <label class="field">
+              <span>Prénom de l’étudiant</span>
+              <input type="text" name="prenom" autocomplete="given-name" required />
+            </label>
+
+            <label class="field full-width">
+              <span>Titre du mémoire</span>
+              <input type="text" name="titre" required />
+            </label>
+
+            <label class="field">
+              <span>Type de mémoire</span>
+              <select name="type-memoire" required>
+                <option value="">Sélectionner un type</option>
+                <option>Revue de littérature</option>
+                <option>Revue systématique</option>
+                <option>Étude quantitative</option>
+                <option>Étude qualitative</option>
+                <option>Étude observationnelle</option>
+                <option>Cas clinique</option>
+                <option>Mémoire professionnel</option>
+                <option>Autre / à préciser</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Année de formation</span>
+              <select name="annee-formation" required>
+                <option value="">Sélectionner une année</option>
+                <option>K3</option>
+                <option>K4</option>
+                <option>K5</option>
+                <option>Autre</option>
+              </select>
+            </label>
+
+            <label class="field full-width">
+              <span>Import du fichier mémoire</span>
+              <input type="file" name="fichier-memoire" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
+              <small>Formats acceptés pour cette étape : PDF ou DOCX.</small>
+            </label>
+
+            <label class="field full-width">
+              <span>Notes de relecture</span>
+              <textarea name="notes" rows="6" placeholder="Ajouter une note de contexte, une question ou un point à vérifier plus tard."></textarea>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="primary-action" type="submit">Créer la fiche mémoire</button>
+            <a class="secondary-action" href="index.html">Retour à l’accueil</a>
+          </div>
+
+        </form>
+      </section>
+    </main>
+    <script src="navigation.js?v=7" defer></script>
+  </body>
+</html>

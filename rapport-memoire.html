@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rapport de relecture - Redac-IMRaD</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div data-main-nav></div>
+    <main class="app-shell">
+      <header class="topbar" aria-label="En-tete">
+        <div>
+          <p class="eyebrow">Rapport provisoire</p>
+          <h1>Rapport de relecture</h1>
+        </div>
+        <a class="secondary-action" href="index.html">Retour à l’accueil</a>
+      </header>
+
+      <section class="status-band" aria-labelledby="report-title">
+        <div>
+          <p class="eyebrow">Conformité IMRaD</p>
+          <h2 id="report-title">Analyse à vérifier</h2>
+          <p id="report-intro">
+            Le rapport provisoire apparaîtra ici après l’analyse locale du fichier depuis le tableau
+            de bord.
+          </p>
+        </div>
+        <div class="status-panel" aria-label="Etat du rapport">
+          <span class="status-label">Statut</span>
+          <strong id="report-status">En attente</strong>
+          <span class="status-note">Aide à la relecture</span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="summary-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Synthèse globale</p>
+            <h2 id="summary-title">Résumé du rapport provisoire</h2>
+          </div>
+        </div>
+        <div id="report-summary" class="empty-state">
+          Aucun rapport provisoire n’est disponible pour ce mémoire.
+        </div>
+        <div id="summary-criteria" class="criteria-list"></div>
+      </section>
+
+      <section class="workspace" aria-labelledby="sections-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Sections IMRaD</p>
+            <h2 id="sections-title">Repérage automatique des parties</h2>
+          </div>
+        </div>
+        <div id="report-sections" class="report-section-grid"></div>
+      </section>
+
+      <section class="workspace" aria-labelledby="vigilance-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Points de vigilance</p>
+            <h2 id="vigilance-title">À vérifier lors de la relecture</h2>
+          </div>
+        </div>
+        <ul id="vigilance-list" class="report-list"></ul>
+      </section>
+
+      <section class="workspace" aria-labelledby="priorities-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Priorités de correction</p>
+            <h2 id="priorities-title">Étapes conseillées</h2>
+          </div>
+        </div>
+        <ul id="priorities-list" class="report-list"></ul>
+      </section>
+    </main>
+    <script src="navigation.js?v=7" defer></script>
+    <script src="grilles-imrad.js?v=5" defer></script>
+    <script src="grille-point-memoire.js?v=6" defer></script>
+    <script src="rapport.js?v=5" defer></script>
+  </body>
+</html>
