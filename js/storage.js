@@ -58,6 +58,7 @@
       donneesParcours: studentData.donneesParcours || {},
       memoireImporte: studentData.memoireImporte || null,
       livrablesK4: studentData.livrablesK4 || null,
+      pointMemoireResume: studentData.pointMemoireResume || null,
     };
 
     database.students.push(student);

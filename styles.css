@@ -801,6 +801,45 @@ p {
   margin-bottom: 7px;
 }
 
+.point-resume-config {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.7fr) minmax(280px, 1.2fr) minmax(180px, 0.7fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.point-resume-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.point-resume-actions {
+  align-items: stretch;
+}
+
+.point-resume-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.point-resume-result[hidden] {
+  display: none;
+}
+
+.point-resume-result > p {
+  margin: 0;
+}
+
+.point-resume-result .form-message {
+  flex-basis: 100%;
+}
+
 .k4-student-grid {
   grid-template-columns: 1fr;
 }
@@ -1175,7 +1214,9 @@ p {
   .axis-grid,
   .sync-controls,
   .questionnaire-details,
-  .questionnaire-summary-grid {
+  .questionnaire-summary-grid,
+  .point-resume-config,
+  .point-resume-grid {
     grid-template-columns: 1fr;
   }
 

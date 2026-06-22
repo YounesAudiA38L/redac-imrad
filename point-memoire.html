@@ -18,8 +18,70 @@
         <div id="questionnaire-response-list" class="questionnaire-list" aria-live="polite"></div>
       </section>
 
+      <section class="workspace" aria-labelledby="point-resume-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Après la visio</p>
+            <h2 id="point-resume-title">Fiche résumé après visio</h2>
+          </div>
+        </div>
+
+        <div class="point-resume-config">
+          <label class="field">
+            <span>Étudiant sélectionné</span>
+            <select id="point-resume-student">
+              <option value="">Sélectionner un étudiant</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>URL Apps Script — Fiche résumé Point Mémoire</span>
+            <input id="point-resume-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" />
+          </label>
+          <label class="field">
+            <span>Token Apps Script</span>
+            <input id="point-resume-token" type="password" autocomplete="off" />
+          </label>
+          <button class="secondary-action" type="button" id="save-point-resume-endpoint">Enregistrer l’URL</button>
+        </div>
+        <p class="sync-note">Cette connexion sert uniquement à générer le Google Doc et à préparer un brouillon mail. Aucun message n’est envoyé automatiquement.</p>
+        <p id="point-resume-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
+
+        <form id="point-resume-form" class="context-form" novalidate>
+          <fieldset class="form-section" disabled>
+            <legend>Fiche résumé</legend>
+            <div class="form-grid point-resume-grid">
+              <label class="field"><span>Date de la visio</span><input type="date" name="dateVisio" /></label>
+              <label class="field"><span>Année</span><select name="annee"><option value="">Sélectionner</option><option value="K4">K4</option><option value="K5">K5</option><option value="Rattrapage">Rattrapage</option></select></label>
+              <label class="field full-width"><span>Sujet</span><textarea name="sujet" rows="3"></textarea></label>
+              <label class="field full-width"><span>Question de recherche</span><textarea name="questionRecherche" rows="3"></textarea></label>
+              <label class="field full-width"><span>Méthode</span><textarea name="methode" rows="3"></textarea></label>
+              <label class="field full-width"><span>Niveau d’avancement</span><textarea name="niveauAvancement" rows="2"></textarea></label>
+              <label class="field full-width"><span>Ce qui est solide</span><textarea name="pointsSolides" rows="4"></textarea></label>
+              <label class="field full-width"><span>Ce qui est à travailler</span><textarea name="pointsATravailler" rows="4"></textarea></label>
+              <label class="field full-width"><span>Points de vigilance</span><textarea name="pointsVigilance" rows="4"></textarea></label>
+              <label class="field"><span>Priorité 1</span><textarea name="priorite1" rows="3"></textarea></label>
+              <label class="field"><span>Priorité 2</span><textarea name="priorite2" rows="3"></textarea></label>
+              <label class="field"><span>Priorité 3</span><textarea name="priorite3" rows="3"></textarea></label>
+              <label class="field full-width"><span>Pour aller plus loin</span><textarea name="pourAllerPlusLoin" rows="4"></textarea></label>
+            </div>
+          </fieldset>
+
+          <div class="form-actions point-resume-actions">
+            <button class="secondary-action" type="submit" id="save-point-resume" disabled>Enregistrer la fiche</button>
+            <button class="secondary-action" type="button" id="generate-point-resume-doc" disabled>Générer le Google Doc</button>
+            <button class="primary-action" type="button" id="create-point-resume-draft" disabled>Créer le brouillon mail</button>
+          </div>
+        </form>
+
+        <div id="point-resume-result" class="point-resume-result" aria-live="polite" hidden>
+          <p><strong>Statut :</strong> <span id="point-resume-status"></span></p>
+          <a class="secondary-action" id="open-point-resume-document" href="#" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le document</a>
+          <p id="point-resume-message" class="form-message"></p>
+        </div>
+      </section>
+
       <section class="workspace"><div class="section-heading"><div><p class="eyebrow">Fiches étudiant</p><h2>Étudiants accompagnés</h2></div></div><div class="student-grid" data-parcours-students="point-memoire" aria-live="polite"></div></section>
     </main>
-    <script src="navigation.js?v=8" defer></script><script src="js/storage.js?v=9" defer></script><script src="grille-point-memoire.js?v=6" defer></script><script src="js/questionnaire-sync.js?v=10" defer></script><script src="parcours.js?v=9" defer></script>
+    <script src="navigation.js?v=8" defer></script><script src="js/storage.js?v=13" defer></script><script src="grille-point-memoire.js?v=6" defer></script><script src="js/questionnaire-sync.js?v=10" defer></script><script src="parcours.js?v=13" defer></script><script src="js/point-memoire-resume.js?v=2" defer></script>
   </body>
 </html>
