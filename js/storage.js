@@ -59,6 +59,27 @@
       memoireImporte: studentData.memoireImporte || null,
       livrablesK4: studentData.livrablesK4 || null,
       pointMemoireResume: studentData.pointMemoireResume || null,
+      questionnairePreVisioK4: studentData.questionnairePreVisioK4 || (studentData.parcours === "k4" ? {
+        formUrl: "",
+        sendDraftId: "",
+        sendDraftCreatedAt: "",
+        sendStatus: "non envoyé",
+        responseStatus: "aucune réponse",
+        responseId: "",
+        receivedAt: "",
+        email: "",
+        ifmk: "",
+        pointDepart: "",
+        objectifs: "",
+        sujetEnvisage: "",
+        questionRecherche: "",
+        methodeEnvisagee: "",
+        blocages: "",
+        documentsDisponibles: "",
+        questionsVisio: "",
+        attentes: "",
+        rawResponse: {},
+      } : null),
     };
 
     database.students.push(student);
