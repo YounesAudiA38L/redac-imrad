@@ -1,6 +1,7 @@
 (function renderMainNavigation() {
   const items = [
     { id: "accueil", label: "Accueil", href: "index.html" },
+    { id: "prospects", label: "Prospects", href: "prospects.html" },
     { id: "point-memoire", label: "Point Mémoire", href: "point-memoire.html" },
     { id: "k4", label: "K4", href: "k4.html" },
     { id: "k5", label: "K5", href: "k5.html" },

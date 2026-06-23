@@ -6,18 +6,42 @@
     <title>Accueil - Redac-IMRaD</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="accueil-pilotage">
     <div data-main-nav data-active="accueil"></div>
     <main class="app-shell">
       <header class="topbar" aria-label="En-tête">
         <div><p class="eyebrow">Sois fière de ton mémoire</p><h1>Accueil</h1></div>
-        <button class="primary-action" type="button" id="add-student-trigger">Ajouter un étudiant accompagné</button>
+        <button class="primary-action" type="button" id="add-student-trigger">Ajouter un étudiant</button>
       </header>
 
-      <section class="status-band" aria-labelledby="welcome-title">
-        <div><p class="eyebrow">Espace de travail Audrey</p><h2 id="welcome-title">Suivi centralisé des étudiants accompagnés</h2><p>Créez une fiche unique, choisissez le parcours et retrouvez ensuite l’étudiant dans l’espace Point Mémoire, K4, K5 ou Rattrapage.</p></div>
-        <div class="status-panel"><span class="status-label">Étudiants actifs</span><strong id="active-student-count">0</strong><span class="status-note">Fiches enregistrées localement</span></div>
+      <section class="accueil-overview" aria-label="Recherche et indicateurs">
+        <div class="workspace quick-search-workspace" aria-labelledby="quick-search-title">
+          <div class="section-heading"><div><p class="eyebrow">Étudiants et prospects</p><h2 id="quick-search-title">Recherche rapide</h2></div></div>
+          <label class="field accueil-search-field"><span class="visually-hidden">Recherche rapide</span><input id="global-search-input" type="search" autocomplete="off" placeholder="Rechercher un étudiant ou un prospect par nom, email, parcours…" /></label>
+          <div id="global-search-results" class="global-search-results" aria-live="polite"><p class="empty-state">Saisissez une recherche pour trouver un étudiant ou un prospect.</p></div>
+        </div>
+        <div class="accueil-counters" aria-label="Compteurs rapides">
+          <article class="accueil-counter accueil-counter-active"><span>Actifs</span><strong id="active-student-count">0</strong><small>Étudiants accompagnés</small></article>
+          <article class="accueil-counter accueil-counter-urgent"><span>Urgents</span><strong id="urgent-count">0</strong><small>Situations signalées</small></article>
+        </div>
       </section>
+
+      <details class="workspace quick-prospect-workspace" id="quick-prospect-workspace">
+        <summary><span><span class="eyebrow">Nouveau contact</span><strong>Ajouter rapidement un prospect</strong></span></summary>
+        <form id="quick-prospect-form" class="quick-prospect-form">
+          <div class="form-grid">
+            <label class="field"><span>Prénom</span><input name="prenom" type="text" /></label>
+            <label class="field"><span>Nom</span><input name="nom" type="text" /></label>
+            <label class="field"><span>Email</span><input name="email" type="email" /></label>
+            <label class="field"><span>Téléphone</span><input name="telephone" type="tel" /></label>
+            <label class="field"><span>Provenance</span><select name="source"><option value="">Sélectionner</option><option>Instagram</option><option>Facebook</option><option>YouTube</option><option>LinkedIn</option><option>bouche-à-oreille</option><option>autre</option></select></label>
+            <label class="field"><span>Parcours visé</span><select name="parcoursInteresse"><option value="non défini">Non défini</option><option value="point-memoire">Point Mémoire</option><option value="k4">K4</option><option value="k5">K5</option><option value="rattrapage">Rattrapage</option></select></label>
+            <label class="field full-width"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
+          </div>
+          <div class="form-actions"><button class="primary-action" type="submit">Ajouter le prospect</button></div>
+          <p id="quick-prospect-message" class="form-message" role="status" aria-live="polite" hidden></p>
+        </form>
+      </details>
 
       <section class="workspace student-form-workspace" id="student-form-workspace" aria-labelledby="student-form-title" hidden>
         <div class="section-heading"><div><p class="eyebrow">Fiche étudiant</p><h2 id="student-form-title">Nouvel étudiant accompagné</h2></div><button class="secondary-action compact-action" type="button" id="close-student-form">Fermer</button></div>
@@ -92,18 +116,24 @@
         </form>
       </section>
 
-      <section class="workspace" aria-labelledby="students-title">
-        <div class="section-heading"><div><p class="eyebrow">Accompagnements</p><h2 id="students-title">Étudiants accompagnés</h2></div></div>
-        <div class="filter-bar" role="group" aria-label="Filtrer les étudiants par parcours"><button class="filter-button active" type="button" data-student-filter="tous" aria-pressed="true">Tous</button><button class="filter-button" type="button" data-student-filter="point-memoire" aria-pressed="false">Point Mémoire</button><button class="filter-button" type="button" data-student-filter="k4" aria-pressed="false">K4</button><button class="filter-button" type="button" data-student-filter="k5" aria-pressed="false">K5</button><button class="filter-button" type="button" data-student-filter="rattrapage" aria-pressed="false">Rattrapage</button></div>
-        <div class="student-grid" id="student-list" aria-live="polite"></div>
-      </section>
+      <div class="accueil-main-grid">
+        <section class="workspace accueil-students-workspace" aria-labelledby="students-title">
+          <div class="section-heading"><div><p class="eyebrow">Accompagnements</p><h2 id="students-title">Étudiants accompagnés</h2></div></div>
+          <div class="filter-bar" role="group" aria-label="Filtrer les étudiants par parcours"><button class="filter-button active" type="button" data-student-filter="tous" aria-pressed="true">Tous</button><button class="filter-button" type="button" data-student-filter="point-memoire" aria-pressed="false">Point Mémoire</button><button class="filter-button" type="button" data-student-filter="k4" aria-pressed="false">K4</button><button class="filter-button" type="button" data-student-filter="k5" aria-pressed="false">K5</button><button class="filter-button" type="button" data-student-filter="rattrapage" aria-pressed="false">Rattrapage</button></div>
+          <div class="student-grid" id="student-list" aria-live="polite"></div>
+        </section>
 
-      <section class="workspace" aria-labelledby="notifications-title"><div class="section-heading"><div><p class="eyebrow">À venir</p><h2 id="notifications-title">Notifications</h2></div></div><p class="empty-state">Aucune notification pour le moment.</p></section>
+        <aside class="accueil-side-column" aria-label="Suivi quotidien">
+          <section class="workspace accueil-side-card" aria-labelledby="todo-title"><div class="section-heading"><div><p class="eyebrow">Suivi quotidien</p><h2 id="todo-title">À faire</h2></div></div><div id="todo-list" class="accueil-todo-list"></div></section>
+          <section class="workspace accueil-side-card" aria-labelledby="deadlines-title"><div class="section-heading"><div><p class="eyebrow">Prochainement</p><h2 id="deadlines-title">Échéances proches</h2></div></div><div id="deadlines-list" class="accueil-info-list"></div></section>
+          <section class="workspace accueil-side-card" aria-labelledby="notifications-title"><div class="section-heading"><div><p class="eyebrow">Informations</p><h2 id="notifications-title">Notifications</h2></div></div><div id="notifications-list" class="accueil-info-list"></div></section>
+        </aside>
+      </div>
     </main>
-    <script src="navigation.js?v=8" defer></script>
-    <script src="js/storage.js?v=9" defer></script>
+    <script src="navigation.js?v=9" defer></script>
+    <script src="js/storage.js?v=17" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
     <script src="js/livrables-k4.js?v=12" defer></script>
-    <script src="accueil.js?v=12" defer></script>
+    <script src="accueil.js?v=14" defer></script>
   </body>
 </html>

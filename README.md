@@ -9,11 +9,12 @@ Le logiciel ne produit pas de decision automatique. Il sert a structurer une ana
 - Point de vigilance
 - Critere partiellement respecte
 
-Structure actuelle : Accueil, Point Mémoire, K4, K5 et Rattrapage.
+Structure actuelle : Accueil, Prospects, Point Mémoire, K4, K5 et Rattrapage.
 
 L'inscription des étudiants est centralisée sur Accueil. Les données sont enregistrées dans une base locale unique :
 
 - `students`
+- `prospects`
 - `settings`
 - `notifications`
 - `reports`

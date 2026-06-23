@@ -15,9 +15,18 @@ const fileInput = document.querySelector("#student-memoire-file");
 const fileStatus = document.querySelector("#student-file-status");
 const pointAxes = document.querySelector("#student-point-axes");
 const filterButtons = document.querySelectorAll("[data-student-filter]");
+const globalSearchInput = document.querySelector("#global-search-input");
+const globalSearchResults = document.querySelector("#global-search-results");
+const quickProspectForm = document.querySelector("#quick-prospect-form");
+const quickProspectMessage = document.querySelector("#quick-prospect-message");
+const urgentCount = document.querySelector("#urgent-count");
+const todoList = document.querySelector("#todo-list");
+const deadlinesList = document.querySelector("#deadlines-list");
+const notificationsList = document.querySelector("#notifications-list");
 
 let currentFilter = "tous";
 let editingStudentId = null;
+let convertingProspectId = null;
 
 const parcoursLabels = {
   "point-memoire": "Point Mémoire",
@@ -69,6 +78,7 @@ function showParcoursFields(parcours) {
 
 function openForm(student = null) {
   editingStudentId = student?.id || null;
+  convertingProspectId = null;
   studentForm.reset();
   formMessage.hidden = true;
   fileStatus.textContent = student?.memoireImporte?.nom || "Aucun fichier sélectionné.";
@@ -87,10 +97,27 @@ function openForm(student = null) {
 
 function closeForm() {
   editingStudentId = null;
+  convertingProspectId = null;
   studentForm.reset();
   showParcoursFields("");
   formWorkspace.hidden = true;
   history.replaceState({}, "", "index.html");
+}
+
+function openProspectConversion(prospect) {
+  openForm();
+  convertingProspectId = prospect.id;
+  formTitle.textContent = "Convertir le prospect en étudiant";
+  saveButton.textContent = "Créer la fiche étudiant";
+  setField("prenom", prospect.prenom);
+  setField("nom", prospect.nom);
+  setField("email", prospect.email);
+  setField("telephone", prospect.telephone);
+  setField("dateDebut", new Date().toISOString().slice(0, 10));
+  setField("notesInitiales", [prospect.messageInitial, prospect.notes].filter(Boolean).join("\n\n"));
+  const parcours = parcoursLabels[prospect.parcoursInteresse] ? prospect.parcoursInteresse : "";
+  setField("parcours", parcours);
+  showParcoursFields(parcours);
 }
 
 function setField(name, value) {
@@ -159,22 +186,40 @@ function collectParcoursData(parcours, data) {
 
 function createStudentCard(student) {
   const card = document.createElement("article");
-  card.className = "student-card";
+  const parcoursClass = parcoursLabels[student.parcours] ? student.parcours : "default";
+  card.className = `student-card accueil-student-card accueil-student-card--${parcoursClass}`;
   card.dataset.studentCategory = student.parcours;
+  card.dataset.studentId = student.id;
 
   const header = document.createElement("div");
-  const category = document.createElement("span"); category.className = "category-label"; category.textContent = parcoursLabels[student.parcours] || student.parcours;
+  header.className = "accueil-student-header";
+  const category = document.createElement("span"); category.className = "category-label accueil-parcours-badge"; category.textContent = parcoursLabels[student.parcours] || student.parcours || "Parcours à renseigner";
   const name = document.createElement("h3"); name.textContent = `${student.prenom} ${student.nom}`.trim() || "Étudiant sans nom";
-  header.append(category, name);
+  const badges = document.createElement("div");
+  badges.className = "accueil-status-badges";
+  if (student.statut) {
+    const status = document.createElement("span");
+    status.className = `accueil-status-badge${normalizeSearchText(student.statut).includes("urgent") ? " is-urgent" : ""}`;
+    status.textContent = student.statut;
+    badges.append(status);
+  }
+  if (student.questionnairePreVisioK4?.responseStatus === "réponse reçue" || student.donneesParcours?.questionnaireRepondu === true) {
+    const questionnaire = document.createElement("span");
+    questionnaire.className = "accueil-status-badge is-received";
+    questionnaire.textContent = "Questionnaire reçu";
+    badges.append(questionnaire);
+  }
+  header.append(category, name, badges);
 
   const details = document.createElement("dl");
-  [["Début d’accompagnement", student.dateDebut || "À renseigner"], ["Statut", student.statut], ["Thématique", student.thematiqueMemoire || "À renseigner"]].forEach(([label, content]) => {
+  details.className = "accueil-student-details";
+  [["Début", student.dateDebut || "À renseigner"], ["Thématique", student.thematiqueMemoire || "À renseigner"]].forEach(([label, content]) => {
     const row = document.createElement("div"); const term = document.createElement("dt"); const description = document.createElement("dd"); term.textContent = label; description.textContent = content; row.append(term, description); details.append(row);
   });
 
   const actions = document.createElement("div"); actions.className = "student-card-actions";
-  const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Ouvrir la fiche";
-  const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier le suivi";
+  const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Ouvrir";
+  const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier";
   const archive = document.createElement("button"); archive.className = "secondary-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver"; archive.disabled = student.statut === "Archivé";
   archive.addEventListener("click", () => { storage.archiveStudent(student.id); renderStudents(); });
   actions.append(open, edit, archive);
@@ -186,7 +231,7 @@ function renderStudents() {
   const database = storage.getDatabase();
   const students = currentFilter === "tous" ? database.students : storage.getStudentsByParcours(currentFilter);
   studentList.textContent = "";
-  activeCount.textContent = String(storage.getActiveStudents().length);
+  renderPilotage(database);
 
   if (students.length === 0) {
     const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Aucun étudiant accompagné dans cette catégorie."; studentList.append(empty); return;
@@ -194,8 +239,233 @@ function renderStudents() {
   students.forEach((student) => studentList.append(createStudentCard(student)));
 }
 
+function hasUrgentStatus(item) {
+  return normalizeSearchText(item?.statut).includes("urgent");
+}
+
+function appendMetricRow(container, label, count, tone = "") {
+  const row = document.createElement("div");
+  row.className = `accueil-todo-row${tone ? ` ${tone}` : ""}`;
+  const text = document.createElement("span");
+  text.textContent = label;
+  const value = document.createElement("strong");
+  value.textContent = String(count);
+  row.append(text, value);
+  container.append(row);
+}
+
+function getDeadlineValue(student) {
+  return student.echeance
+    || student.dateEcheance
+    || student.donneesParcours?.echeance
+    || student.questionnairePreVisioK4?.echeance
+    || student.donneesParcours?.questionnaire?.echeance
+    || "";
+}
+
+function parseDateValue(value) {
+  if (!value) return null;
+  const frenchDate = String(value).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const date = frenchDate
+    ? new Date(Number(frenchDate[3]), Number(frenchDate[2]) - 1, Number(frenchDate[1]))
+    : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function renderDeadlines(students) {
+  deadlinesList.textContent = "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const limit = new Date(today);
+  limit.setDate(limit.getDate() + 45);
+  const deadlines = students
+    .map((student) => ({ student, date: parseDateValue(getDeadlineValue(student)) }))
+    .filter(({ date }) => date && date >= today && date <= limit)
+    .sort((left, right) => left.date - right.date);
+
+  if (!deadlines.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "Aucune échéance proche renseignée.";
+    deadlinesList.append(empty);
+    return;
+  }
+
+  deadlines.forEach(({ student, date }) => {
+    const row = document.createElement("article");
+    row.className = "accueil-info-row";
+    const name = document.createElement("strong");
+    name.textContent = `${student.prenom || ""} ${student.nom || ""}`.trim() || "Étudiant sans nom";
+    const detail = document.createElement("span");
+    detail.textContent = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+    row.append(name, detail);
+    deadlinesList.append(row);
+  });
+}
+
+function renderNotifications(notifications) {
+  notificationsList.textContent = "";
+  if (!notifications.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "Aucune notification pour le moment.";
+    notificationsList.append(empty);
+    return;
+  }
+
+  notifications.slice(0, 6).forEach((notification) => {
+    const row = document.createElement("article");
+    row.className = "accueil-info-row";
+    const content = document.createElement("strong");
+    content.textContent = typeof notification === "string"
+      ? notification
+      : notification?.message || notification?.texte || notification?.title || notification?.titre || "Notification";
+    const dateValue = notification && typeof notification === "object" ? notification.date || notification.createdAt || notification.dateCreation : "";
+    row.append(content);
+    if (dateValue) {
+      const date = document.createElement("span");
+      date.textContent = parseDateValue(dateValue)?.toLocaleDateString("fr-FR") || String(dateValue);
+      row.append(date);
+    }
+    notificationsList.append(row);
+  });
+}
+
+function renderPilotage(database) {
+  const activeStudents = database.students.filter((student) => normalizeSearchText(student.statut) !== "archive");
+  const urgentTotal = database.students.filter(hasUrgentStatus).length + database.prospects.filter(hasUrgentStatus).length;
+  activeCount.textContent = String(activeStudents.length);
+  urgentCount.textContent = String(urgentTotal);
+
+  const pendingProspectQuestionnaires = database.prospects.filter((prospect) => {
+    const status = normalizeSearchText(prospect.statut);
+    return prospect.questionnaireEnvoye === true && prospect.questionnaireRepondu !== true && status !== "converti en etudiant" && status !== "archive";
+  }).length;
+  const pendingStudentQuestionnaires = activeStudents.filter((student) => {
+    const questionnaire = student.questionnairePreVisioK4;
+    return questionnaire && questionnaire.sendStatus !== "non envoyé" && questionnaire.responseStatus !== "réponse reçue";
+  }).length;
+  const prospectsToRelance = database.prospects.filter((prospect) => {
+    const status = normalizeSearchText(prospect.statut);
+    return prospect.questionnaireEnvoye === true && prospect.questionnaireRepondu !== true && status !== "converti en etudiant" && status !== "archive";
+  }).length;
+  const memoiresToAnalyze = activeStudents.filter((student) => {
+    const analysisStatus = normalizeSearchText(student.memoireImporte?.statut || student.analyseStatut || student.statutAnalyse);
+    return Boolean(student.memoireImporte) && ["a analyser", "analyse non commencee", "non commence"].includes(analysisStatus);
+  }).length;
+
+  todoList.textContent = "";
+  appendMetricRow(todoList, "Questionnaires en attente de réponse", pendingProspectQuestionnaires + pendingStudentQuestionnaires, "is-waiting");
+  appendMetricRow(todoList, "Relances prospects à préparer", prospectsToRelance, "is-relance");
+  appendMetricRow(todoList, "Mémoires à analyser", memoiresToAnalyze, "is-analysis");
+  renderDeadlines(activeStudents);
+  renderNotifications(database.notifications);
+}
+
+function normalizeSearchText(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
+}
+
+function matchesSearch(item, fields, query) {
+  return fields.some((field) => normalizeSearchText(item[field]).includes(query));
+}
+
+function appendSearchDetail(list, label, content) {
+  const row = document.createElement("div");
+  const term = document.createElement("dt");
+  const detail = document.createElement("dd");
+  term.textContent = label;
+  detail.textContent = content || "À renseigner";
+  row.append(term, detail);
+  list.append(row);
+}
+
+function createSearchResultCard(item, type) {
+  const card = document.createElement("article");
+  card.className = "quick-search-card";
+  const heading = document.createElement("h4");
+  heading.textContent = `${item.prenom || ""} ${item.nom || ""}`.trim() || (type === "student" ? "Étudiant sans nom" : "Prospect sans nom");
+  const details = document.createElement("dl");
+  appendSearchDetail(details, "Email", item.email);
+
+  const actions = document.createElement("div");
+  actions.className = "quick-search-actions";
+  if (type === "student") {
+    appendSearchDetail(details, "Parcours", parcoursLabels[item.parcours] || item.parcours);
+    appendSearchDetail(details, "Statut", item.statut);
+    appendSearchDetail(details, "Date de début", item.dateDebut);
+    const open = document.createElement("a");
+    open.className = "secondary-action";
+    open.href = `index.html?student=${encodeURIComponent(item.id)}`;
+    open.textContent = "Ouvrir la fiche";
+    const path = document.createElement("a");
+    path.className = "secondary-action";
+    path.href = { "point-memoire": "point-memoire.html", k4: "k4.html", k5: "k5.html", rattrapage: "rattrapage.html" }[item.parcours] || "index.html";
+    path.textContent = "Voir dans parcours";
+    actions.append(open, path);
+  } else {
+    appendSearchDetail(details, "Source", item.source);
+    appendSearchDetail(details, "Statut", item.statut);
+    appendSearchDetail(details, "Date de contact", item.dateContact);
+    appendSearchDetail(details, "Questionnaire envoyé", item.questionnaireEnvoye === true ? "Oui" : "Non");
+    const view = document.createElement("a");
+    view.className = "secondary-action";
+    view.href = `prospects.html?prospect=${encodeURIComponent(item.id)}`;
+    view.textContent = "Voir dans Prospects";
+    actions.append(view);
+    if (normalizeSearchText(item.statut) !== "converti en etudiant") {
+      const convert = document.createElement("button");
+      convert.className = "primary-action";
+      convert.type = "button";
+      convert.textContent = "Convertir en étudiant";
+      convert.addEventListener("click", () => openProspectConversion(item));
+      actions.append(convert);
+    }
+  }
+  card.append(heading, details, actions);
+  return card;
+}
+
+function appendSearchGroup(title, items, type) {
+  const section = document.createElement("section");
+  section.className = "quick-search-group";
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  const list = document.createElement("div");
+  list.className = "quick-search-list";
+  items.forEach((item) => list.append(createSearchResultCard(item, type)));
+  section.append(heading, list);
+  globalSearchResults.append(section);
+}
+
+function renderGlobalSearch() {
+  const query = normalizeSearchText(globalSearchInput.value.trim());
+  globalSearchResults.textContent = "";
+  if (!query) {
+    const prompt = document.createElement("p");
+    prompt.className = "empty-state";
+    prompt.textContent = "Saisissez une recherche pour trouver un étudiant ou un prospect.";
+    globalSearchResults.append(prompt);
+    return;
+  }
+
+  const database = storage.getDatabase();
+  const students = database.students.filter((student) => matchesSearch(student, ["prenom", "nom", "email", "telephone", "ifmk", "parcours", "statut"], query));
+  const prospects = database.prospects.filter((prospect) => matchesSearch(prospect, ["prenom", "nom", "email", "telephone", "statut", "source", "parcoursInteresse"], query));
+  if (!students.length && !prospects.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "Aucun étudiant ou prospect trouvé.";
+    globalSearchResults.append(empty);
+    return;
+  }
+  if (students.length) appendSearchGroup("Étudiants trouvés", students, "student");
+  if (prospects.length) appendSearchGroup("Prospects trouvés", prospects, "prospect");
+}
+
 renderPointAxes();
 renderStudents();
+renderGlobalSearch();
 
 parcoursSelect.addEventListener("change", () => showParcoursFields(parcoursSelect.value));
 fileInput.addEventListener("change", () => { fileStatus.textContent = fileInput.files?.[0]?.name || "Aucun fichier sélectionné."; });
@@ -211,6 +481,37 @@ filterButtons.forEach((button) => {
   });
 });
 
+globalSearchInput.addEventListener("input", renderGlobalSearch);
+
+quickProspectForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const data = new FormData(quickProspectForm);
+  const identity = [value(data, "prenom"), value(data, "nom"), value(data, "email")];
+  if (!identity.some(Boolean)) {
+    quickProspectMessage.textContent = "Renseignez au moins un prénom, un nom ou un email.";
+    quickProspectMessage.hidden = false;
+    return;
+  }
+  storage.createProspect({
+    prenom: identity[0],
+    nom: identity[1],
+    email: identity[2],
+    telephone: value(data, "telephone"),
+    source: data.get("source") || "",
+    parcoursInteresse: data.get("parcoursInteresse") || "non défini",
+    messageInitial: value(data, "messageInitial"),
+    notes: value(data, "notes"),
+    dateContact: new Date().toISOString().slice(0, 10),
+    questionnaireEnvoye: false,
+    questionnaireRepondu: false,
+    statut: "nouveau",
+  });
+  quickProspectForm.reset();
+  quickProspectMessage.textContent = "Prospect ajouté.";
+  quickProspectMessage.hidden = false;
+  renderGlobalSearch();
+});
+
 studentForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(studentForm);
@@ -222,10 +523,13 @@ studentForm.addEventListener("submit", (event) => {
     livrablesK4: parcours === "k4" ? existing?.livrablesK4 || window.LivrablesK4.getLivrablesK4() : existing?.livrablesK4 || null,
   };
 
-  if (editingStudentId) storage.updateStudent(editingStudentId, studentData); else storage.createStudent(studentData);
-  formMessage.textContent = editingStudentId ? "La fiche étudiant a été mise à jour." : "La fiche étudiant a été créée.";
+  if (editingStudentId) storage.updateStudent(editingStudentId, studentData);
+  else if (convertingProspectId) storage.convertProspectToStudent(convertingProspectId, studentData);
+  else storage.createStudent(studentData);
+  formMessage.textContent = editingStudentId ? "La fiche étudiant a été mise à jour." : (convertingProspectId ? "Le prospect a été converti en étudiant." : "La fiche étudiant a été créée.");
   formMessage.hidden = false;
   renderStudents();
+  renderGlobalSearch();
   setTimeout(closeForm, 700);
 });
 

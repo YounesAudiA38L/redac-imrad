@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prospects - Redac-IMRaD</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div data-main-nav data-active="prospects"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <div><p class="eyebrow">Suivi des contacts</p><h1>Prospects</h1></div>
+      </header>
+
+      <section class="status-band" aria-labelledby="prospects-title">
+        <div><p class="eyebrow">Préparation des échanges</p><h2 id="prospects-title">Suivi des prospects</h2><p>Préparez les relances des personnes ayant reçu le questionnaire sans y avoir encore répondu.</p></div>
+        <div class="status-panel"><span class="status-label">Prospects</span><strong id="prospect-total-count">0</strong><span class="status-note">Enregistrés localement</span></div>
+      </section>
+
+      <section class="workspace" aria-labelledby="prospect-relance-title">
+        <div class="section-heading"><div><p class="eyebrow">Brouillons Gmail</p><h2 id="prospect-relance-title">Relance des prospects sans réponse</h2></div><div id="prospect-relance-count" class="prospect-relance-counter">0 prospect(s) à relancer</div></div>
+
+        <div class="prospect-relance-config">
+          <label class="field"><span>URL Apps Script — Relance prospects</span><input id="prospect-relance-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+          <label class="field"><span>Token Apps Script — Relance prospects</span><input id="prospect-relance-token" type="password" autocomplete="off" /></label>
+          <button class="secondary-action" id="save-prospect-relance-config" type="button">Enregistrer la connexion</button>
+        </div>
+        <p id="prospect-relance-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
+
+        <form id="prospect-relance-form" class="prospect-relance-form">
+          <label class="field"><span>Objet du mail de relance</span><input name="subject" type="text" value="Petit rappel — questionnaire avant notre échange" /></label>
+          <label class="field"><span>Message de relance</span><textarea name="message" rows="13">Bonjour {{prenom}},
+
+Je me permets de te relancer concernant le questionnaire envoyé récemment.
+
+Il me permettra de mieux comprendre ta situation et de préparer un échange plus utile.
+
+Voici le lien du questionnaire :
+{{questionnaireUrl}}
+
+À bientôt,
+Audrey
+Sois fière de ton mémoire</textarea><small>Variables disponibles : {{prenom}}, {{nom}}, {{email}}, {{questionnaireUrl}}</small></label>
+          <div class="form-actions"><button class="primary-action" id="create-prospect-relance-drafts" type="submit">Créer les brouillons de relance</button></div>
+        </form>
+        <p id="prospect-relance-status" class="form-message" role="status" aria-live="polite" hidden></p>
+
+        <div class="prospect-scheduler-disabled" aria-disabled="true"><strong>Programmer l’envoi</strong><p>Fonction à activer dans une étape ultérieure.</p></div>
+      </section>
+    </main>
+    <script src="navigation.js?v=9" defer></script>
+    <script src="js/storage.js?v=17" defer></script>
+    <script src="js/prospects.js?v=1" defer></script>
+  </body>
+</html>
