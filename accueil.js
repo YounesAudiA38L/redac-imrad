@@ -15,6 +15,7 @@ const fileInput = document.querySelector("#student-memoire-file");
 const fileStatus = document.querySelector("#student-file-status");
 const pointAxes = document.querySelector("#student-point-axes");
 const filterButtons = document.querySelectorAll("[data-student-filter]");
+const statusFilter = document.querySelector("#student-status-filter");
 const globalSearchInput = document.querySelector("#global-search-input");
 const globalSearchResults = document.querySelector("#global-search-results");
 const quickProspectForm = document.querySelector("#quick-prospect-form");
@@ -23,8 +24,14 @@ const urgentCount = document.querySelector("#urgent-count");
 const todoList = document.querySelector("#todo-list");
 const deadlinesList = document.querySelector("#deadlines-list");
 const notificationsList = document.querySelector("#notifications-list");
+const agendaEmbedInput = document.querySelector("#google-agenda-embed-input");
+const saveAgendaButton = document.querySelector("#save-google-agenda");
+const openAgendaButton = document.querySelector("#open-google-agenda");
+const agendaMessage = document.querySelector("#google-agenda-message");
+const agendaPreview = document.querySelector("#google-agenda-preview");
 
 let currentFilter = "tous";
+let currentStatusFilter = "tous";
 let editingStudentId = null;
 let convertingProspectId = null;
 
@@ -39,6 +46,76 @@ const pointAxisLabels = {
   "recherche-bibliographique": "Bibliographie",
   "soutenance-jury": "Soutenance",
 };
+
+const allowedAgendaPaths = new Set([
+  "/calendar/embed",
+  "/calendar/u/0/embed",
+  "/calendar/u/1/embed",
+]);
+
+function extractAgendaUrl(rawValue) {
+  const input = String(rawValue || "").trim();
+  if (!input) return "";
+  if (!input.startsWith("<")) return input;
+
+  const parsedMarkup = new DOMParser().parseFromString(input, "text/html");
+  return parsedMarkup.querySelector("iframe")?.getAttribute("src")?.trim() || "";
+}
+
+function validateAgendaUrl(rawValue) {
+  const extractedUrl = extractAgendaUrl(rawValue);
+  if (!extractedUrl) return null;
+
+  try {
+    const parsedUrl = new URL(extractedUrl);
+    if (parsedUrl.origin !== "https://calendar.google.com" || parsedUrl.username || parsedUrl.password || !allowedAgendaPaths.has(parsedUrl.pathname)) return null;
+    return parsedUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
+function setAgendaMessage(message, state = "") {
+  agendaMessage.textContent = message;
+  agendaMessage.dataset.state = state;
+  agendaMessage.hidden = !message;
+}
+
+function renderGoogleAgenda(url) {
+  agendaPreview.textContent = "";
+  openAgendaButton.disabled = !url;
+
+  if (!url) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "Aucun agenda connecté pour le moment.";
+    agendaPreview.append(empty);
+    return;
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.src = url;
+  iframe.width = "100%";
+  iframe.height = "520";
+  iframe.frameBorder = "0";
+  iframe.scrolling = "no";
+  iframe.loading = "lazy";
+  iframe.title = "Google Agenda — Mes rendez-vous";
+  agendaPreview.append(iframe);
+}
+
+function getStoredAgendaUrl() {
+  return validateAgendaUrl(storage.getDatabase().settings.googleAgendaEmbedUrl);
+}
+
+function initializeGoogleAgenda() {
+  const database = storage.getDatabase();
+  const storedValue = database.settings.googleAgendaEmbedUrl || "";
+  const validUrl = validateAgendaUrl(storedValue);
+  agendaEmbedInput.value = validUrl || storedValue;
+  renderGoogleAgenda(validUrl);
+  if (storedValue && !validUrl) setAgendaMessage("L’URL d’agenda enregistrée n’est pas valide.", "error");
+}
 
 function createTextareaField(name, label) {
   const wrapper = document.createElement("label");
@@ -125,6 +202,11 @@ function setField(name, value) {
   if (field) field.value = value ?? "";
 }
 
+function setBooleanField(name, checked) {
+  const field = studentForm.elements.namedItem(name);
+  if (field) field.checked = checked === true;
+}
+
 function setChecked(name, values) {
   const selected = new Set(values || []);
   studentForm.querySelectorAll(`input[type="checkbox"][name="${name}"]`).forEach((checkbox) => {
@@ -133,7 +215,8 @@ function setChecked(name, values) {
 }
 
 function populateForm(student) {
-  ["prenom", "nom", "email", "ifmk", "telephone", "dateDebut", "parcours", "thematiqueMemoire", "statut", "notesInitiales"].forEach((name) => setField(name, student[name]));
+  ["prenom", "nom", "email", "ifmk", "telephone", "dateDebut", "echeance", "parcours", "thematiqueMemoire", "statut", "statutSuivi", "notesInitiales"].forEach((name) => setField(name, student[name]));
+  setBooleanField("urgentManuel", student.urgentManuel);
   showParcoursFields(student.parcours);
   const data = student.donneesParcours || {};
 
@@ -196,18 +279,27 @@ function createStudentCard(student) {
   const category = document.createElement("span"); category.className = "category-label accueil-parcours-badge"; category.textContent = parcoursLabels[student.parcours] || student.parcours || "Parcours à renseigner";
   const name = document.createElement("h3"); name.textContent = `${student.prenom} ${student.nom}`.trim() || "Étudiant sans nom";
   const badges = document.createElement("div");
-  badges.className = "accueil-status-badges";
-  if (student.statut) {
-    const status = document.createElement("span");
-    status.className = `accueil-status-badge${normalizeSearchText(student.statut).includes("urgent") ? " is-urgent" : ""}`;
-    status.textContent = student.statut;
-    badges.append(status);
-  }
-  if (student.questionnairePreVisioK4?.responseStatus === "réponse reçue" || student.donneesParcours?.questionnaireRepondu === true) {
-    const questionnaire = document.createElement("span");
-    questionnaire.className = "accueil-status-badge is-received";
-    questionnaire.textContent = "Questionnaire reçu";
-    badges.append(questionnaire);
+  badges.className = "accueil-status-badges statut-pastilles";
+  const followUpStatus = document.createElement("span");
+  followUpStatus.className = "statut-pastille";
+  followUpStatus.dataset.statut = student.statutSuivi;
+  followUpStatus.textContent = storage.getStatutSuiviLabel(student.statutSuivi);
+  badges.append(followUpStatus);
+
+  const deadlineLevel = storage.getNiveauEcheance(student);
+  const deadlineBadge = document.createElement("span");
+  if (deadlineLevel === "depassee") {
+    deadlineBadge.className = "statut-pastille statut-pastille-depassee";
+    deadlineBadge.textContent = "Échéance dépassée";
+    badges.append(deadlineBadge);
+  } else if (storage.isUrgent(student)) {
+    deadlineBadge.className = "statut-pastille statut-pastille-urgent";
+    deadlineBadge.textContent = "Urgent";
+    badges.append(deadlineBadge);
+  } else if (deadlineLevel === "bientot") {
+    deadlineBadge.className = "statut-pastille statut-pastille-bientot";
+    deadlineBadge.textContent = "Bientôt";
+    badges.append(deadlineBadge);
   }
   header.append(category, name, badges);
 
@@ -229,7 +321,11 @@ function createStudentCard(student) {
 
 function renderStudents() {
   const database = storage.getDatabase();
-  const students = currentFilter === "tous" ? database.students : storage.getStudentsByParcours(currentFilter);
+  const students = database.students.filter((student) => {
+    const parcoursMatches = currentFilter === "tous" || student.parcours === currentFilter;
+    const statusMatches = currentStatusFilter === "tous" || student.statutSuivi === currentStatusFilter;
+    return parcoursMatches && statusMatches;
+  });
   studentList.textContent = "";
   renderPilotage(database);
 
@@ -333,7 +429,7 @@ function renderNotifications(notifications) {
 
 function renderPilotage(database) {
   const activeStudents = database.students.filter((student) => normalizeSearchText(student.statut) !== "archive");
-  const urgentTotal = database.students.filter(hasUrgentStatus).length + database.prospects.filter(hasUrgentStatus).length;
+  const urgentTotal = activeStudents.filter(storage.isUrgent).length + database.prospects.filter(hasUrgentStatus).length;
   activeCount.textContent = String(activeStudents.length);
   urgentCount.textContent = String(urgentTotal);
 
@@ -392,7 +488,7 @@ function createSearchResultCard(item, type) {
   actions.className = "quick-search-actions";
   if (type === "student") {
     appendSearchDetail(details, "Parcours", parcoursLabels[item.parcours] || item.parcours);
-    appendSearchDetail(details, "Statut", item.statut);
+    appendSearchDetail(details, "Statut de suivi", storage.getStatutSuiviLabel(item.statutSuivi));
     appendSearchDetail(details, "Date de début", item.dateDebut);
     const open = document.createElement("a");
     open.className = "secondary-action";
@@ -450,7 +546,7 @@ function renderGlobalSearch() {
   }
 
   const database = storage.getDatabase();
-  const students = database.students.filter((student) => matchesSearch(student, ["prenom", "nom", "email", "telephone", "ifmk", "parcours", "statut"], query));
+  const students = database.students.filter((student) => matchesSearch(student, ["prenom", "nom", "email", "telephone", "ifmk", "parcours", "statut", "statutSuivi"], query));
   const prospects = database.prospects.filter((prospect) => matchesSearch(prospect, ["prenom", "nom", "email", "telephone", "statut", "source", "parcoursInteresse"], query));
   if (!students.length && !prospects.length) {
     const empty = document.createElement("p");
@@ -466,6 +562,7 @@ function renderGlobalSearch() {
 renderPointAxes();
 renderStudents();
 renderGlobalSearch();
+initializeGoogleAgenda();
 
 parcoursSelect.addEventListener("change", () => showParcoursFields(parcoursSelect.value));
 fileInput.addEventListener("change", () => { fileStatus.textContent = fileInput.files?.[0]?.name || "Aucun fichier sélectionné."; });
@@ -481,7 +578,36 @@ filterButtons.forEach((button) => {
   });
 });
 
+statusFilter.addEventListener("change", () => {
+  currentStatusFilter = statusFilter.value;
+  renderStudents();
+});
+
 globalSearchInput.addEventListener("input", renderGlobalSearch);
+
+saveAgendaButton.addEventListener("click", () => {
+  const validUrl = validateAgendaUrl(agendaEmbedInput.value);
+  if (!validUrl) {
+    setAgendaMessage("Utilisez une URL d’intégration Google Agenda valide ou son code iframe complet.", "error");
+    return;
+  }
+
+  const database = storage.getDatabase();
+  database.settings = { ...database.settings, googleAgendaEmbedUrl: validUrl };
+  storage.saveDatabase(database);
+  agendaEmbedInput.value = validUrl;
+  renderGoogleAgenda(validUrl);
+  setAgendaMessage("L’agenda a été enregistré.", "success");
+});
+
+openAgendaButton.addEventListener("click", () => {
+  const agendaUrl = getStoredAgendaUrl();
+  if (!agendaUrl) {
+    setAgendaMessage("Ajoute d’abord une URL Google Agenda.", "error");
+    return;
+  }
+  window.open(agendaUrl, "_blank", "noopener,noreferrer");
+});
 
 quickProspectForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -519,7 +645,7 @@ studentForm.addEventListener("submit", (event) => {
   const selectedFile = fileInput.files?.[0];
   const existing = editingStudentId ? storage.getStudentById(editingStudentId) : null;
   const studentData = {
-    prenom: value(data, "prenom"), nom: value(data, "nom"), email: value(data, "email"), ifmk: value(data, "ifmk"), telephone: value(data, "telephone"), dateDebut: data.get("dateDebut") || "", parcours, thematiqueMemoire: value(data, "thematiqueMemoire"), statut: data.get("statut") || "En cours", notesInitiales: value(data, "notesInitiales"), donneesParcours: collectParcoursData(parcours, data), memoireImporte: selectedFile ? { nom: selectedFile.name, type: selectedFile.type, taille: selectedFile.size } : existing?.memoireImporte || null,
+    prenom: value(data, "prenom"), nom: value(data, "nom"), email: value(data, "email"), ifmk: value(data, "ifmk"), telephone: value(data, "telephone"), dateDebut: data.get("dateDebut") || "", echeance: data.get("echeance") || "", parcours, thematiqueMemoire: value(data, "thematiqueMemoire"), statut: data.get("statut") || "En cours", statutSuivi: data.get("statutSuivi") || "nouveau", urgentManuel: data.get("urgentManuel") === "on", notesInitiales: value(data, "notesInitiales"), donneesParcours: collectParcoursData(parcours, data), memoireImporte: selectedFile ? { nom: selectedFile.name, type: selectedFile.type, taille: selectedFile.size } : existing?.memoireImporte || null,
     livrablesK4: parcours === "k4" ? existing?.livrablesK4 || window.LivrablesK4.getLivrablesK4() : existing?.livrablesK4 || null,
   };
 

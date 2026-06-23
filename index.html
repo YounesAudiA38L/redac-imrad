@@ -43,6 +43,22 @@
         </form>
       </details>
 
+      <section class="workspace agenda-workspace" aria-labelledby="agenda-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Organisation</p><h2 id="agenda-title">Mes rendez-vous</h2></div>
+        </div>
+        <p class="agenda-description">Agenda intégré via Google Agenda. Les rendez-vous restent gérés dans Google Agenda.</p>
+        <div class="agenda-config">
+          <label class="field agenda-config-field"><span>Code ou URL d’intégration Google Agenda</span><textarea id="google-agenda-embed-input" rows="3" placeholder="https://calendar.google.com/calendar/embed?..."></textarea></label>
+          <div class="agenda-actions">
+            <button class="primary-action" type="button" id="save-google-agenda">Enregistrer l’agenda</button>
+            <button class="secondary-action" type="button" id="open-google-agenda" disabled>Ouvrir Google Agenda</button>
+          </div>
+          <p id="google-agenda-message" class="form-message" role="status" aria-live="polite" hidden></p>
+        </div>
+        <div id="google-agenda-preview" class="agenda-preview"><p class="empty-state">Aucun agenda connecté pour le moment.</p></div>
+      </section>
+
       <section class="workspace student-form-workspace" id="student-form-workspace" aria-labelledby="student-form-title" hidden>
         <div class="section-heading"><div><p class="eyebrow">Fiche étudiant</p><h2 id="student-form-title">Nouvel étudiant accompagné</h2></div><button class="secondary-action compact-action" type="button" id="close-student-form">Fermer</button></div>
         <form id="student-form" class="context-form">
@@ -56,9 +72,12 @@
               <label class="field"><span>IFMK</span><input name="ifmk" type="text" /></label>
               <label class="field"><span>Téléphone</span><input name="telephone" type="tel" /></label>
               <label class="field"><span>Date de début d’accompagnement</span><input name="dateDebut" type="date" /></label>
+              <label class="field"><span>Échéance principale (rendu, soutenance…)</span><input name="echeance" type="date" /></label>
               <label class="field full-width"><span>Thématique générale du mémoire</span><input name="thematiqueMemoire" type="text" /></label>
               <label class="field"><span>Parcours choisi</span><select name="parcours" id="student-parcours" required><option value="">Sélectionner</option><option value="point-memoire">Point Mémoire</option><option value="k4">K4</option><option value="k5">K5</option><option value="rattrapage">Rattrapage</option></select></label>
               <label class="field"><span>Statut</span><select name="statut"><option>En cours</option><option>En attente</option><option>Archivé</option></select></label>
+              <label class="field"><span>Statut de suivi initial</span><select name="statutSuivi"><option value="nouveau">Nouveau</option><option value="questionnaire-envoye">Questionnaire envoyé</option><option value="questionnaire-recu">Questionnaire reçu</option><option value="memoire-importe">Mémoire importé</option><option value="analyse-en-cours">Analyse en cours</option><option value="retour-envoye">Retour envoyé</option><option value="a-relancer">À relancer</option><option value="termine">Terminé</option><option value="archive">Archivé</option></select></label>
+              <label class="field checkbox-field"><span>Urgence</span><span class="checkbox-inline"><input name="urgentManuel" type="checkbox" /> Marquer comme urgent</span></label>
               <label class="field full-width"><span>Notes initiales</span><textarea name="notesInitiales" rows="5"></textarea></label>
               <label class="field full-width"><span>Importer le mémoire <small>(optionnel, DOCX recommandé)</small></span><input id="student-memoire-file" name="memoire" type="file" accept=".pdf,.docx" /><small id="student-file-status">Aucun fichier sélectionné.</small></label>
             </div>
@@ -120,6 +139,7 @@
         <section class="workspace accueil-students-workspace" aria-labelledby="students-title">
           <div class="section-heading"><div><p class="eyebrow">Accompagnements</p><h2 id="students-title">Étudiants accompagnés</h2></div></div>
           <div class="filter-bar" role="group" aria-label="Filtrer les étudiants par parcours"><button class="filter-button active" type="button" data-student-filter="tous" aria-pressed="true">Tous</button><button class="filter-button" type="button" data-student-filter="point-memoire" aria-pressed="false">Point Mémoire</button><button class="filter-button" type="button" data-student-filter="k4" aria-pressed="false">K4</button><button class="filter-button" type="button" data-student-filter="k5" aria-pressed="false">K5</button><button class="filter-button" type="button" data-student-filter="rattrapage" aria-pressed="false">Rattrapage</button></div>
+          <label class="statut-filter"><span>Statut de suivi</span><select id="student-status-filter"><option value="tous">Tous les statuts</option><option value="nouveau">Nouveau</option><option value="questionnaire-envoye">Questionnaire envoyé</option><option value="questionnaire-recu">Questionnaire reçu</option><option value="memoire-importe">Mémoire importé</option><option value="analyse-en-cours">Analyse en cours</option><option value="retour-envoye">Retour envoyé</option><option value="a-relancer">À relancer</option><option value="termine">Terminé</option><option value="archive">Archivé</option></select></label>
           <div class="student-grid" id="student-list" aria-live="polite"></div>
         </section>
 
@@ -131,9 +151,9 @@
       </div>
     </main>
     <script src="navigation.js?v=9" defer></script>
-    <script src="js/storage.js?v=17" defer></script>
+    <script src="js/storage.js?v=18" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
     <script src="js/livrables-k4.js?v=12" defer></script>
-    <script src="accueil.js?v=14" defer></script>
+    <script src="accueil.js?v=16" defer></script>
   </body>
 </html>

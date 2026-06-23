@@ -1,5 +1,16 @@
 (function initializeStorage(global) {
   const STORAGE_KEY = "redacImrad.database";
+  const STATUT_SUIVI_LABELS = Object.freeze({
+    nouveau: "Nouveau",
+    "questionnaire-envoye": "Questionnaire envoyé",
+    "questionnaire-recu": "Questionnaire reçu",
+    "memoire-importe": "Mémoire importé",
+    "analyse-en-cours": "Analyse en cours",
+    "retour-envoye": "Retour envoyé",
+    "a-relancer": "À relancer",
+    termine: "Terminé",
+    archive: "Archivé",
+  });
 
   function createEmptyDatabase() {
     return {
@@ -38,13 +49,57 @@
     };
   }
 
+  function normalizeStudent(student) {
+    const requestedStatus = student?.statutSuivi;
+    const statutSuivi = STATUT_SUIVI_LABELS[requestedStatus]
+      ? requestedStatus
+      : student?.statut === "Archivé" ? "archive" : "nouveau";
+    return {
+      ...student,
+      statutSuivi,
+      echeance: student?.echeance || "",
+      urgentManuel: student?.urgentManuel === true,
+    };
+  }
+
+  function getStatutSuiviLabel(value) {
+    return STATUT_SUIVI_LABELS[value] || STATUT_SUIVI_LABELS.nouveau;
+  }
+
+  function getCalendarDayNumber(value) {
+    if (!value) return null;
+    const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const date = match
+      ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+      : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+  }
+
+  function getNiveauEcheance(student) {
+    const deadlineDay = getCalendarDayNumber(student?.echeance);
+    if (deadlineDay === null) return "aucune";
+    const today = new Date();
+    const todayDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000;
+    const remainingDays = deadlineDay - todayDay;
+    if (remainingDays < 0) return "depassee";
+    if (remainingDays <= 7) return "urgent";
+    if (remainingDays <= 15) return "bientot";
+    return "aucune";
+  }
+
+  function isUrgent(student) {
+    const deadlineLevel = getNiveauEcheance(student);
+    return student?.urgentManuel === true || deadlineLevel === "urgent" || deadlineLevel === "depassee";
+  }
+
   function getDatabase() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
       const empty = createEmptyDatabase();
 
       return {
-        students: Array.isArray(stored?.students) ? stored.students : empty.students,
+        students: Array.isArray(stored?.students) ? stored.students.map(normalizeStudent) : empty.students,
         prospects: Array.isArray(stored?.prospects) ? stored.prospects.map(normalizeProspect) : empty.prospects,
         settings: stored?.settings && typeof stored.settings === "object" ? stored.settings : empty.settings,
         notifications: Array.isArray(stored?.notifications) ? stored.notifications : empty.notifications,
@@ -71,6 +126,10 @@
   function createStudent(studentData) {
     const database = getDatabase();
     const now = new Date().toISOString();
+    const archiveRequested = studentData.statutSuivi === "archive" || studentData.statut === "Archivé";
+    const statutSuivi = archiveRequested
+      ? "archive"
+      : STATUT_SUIVI_LABELS[studentData.statutSuivi] ? studentData.statutSuivi : "nouveau";
     const student = {
       id: global.crypto?.randomUUID?.() || `student-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       prenom: studentData.prenom || "",
@@ -81,7 +140,10 @@
       dateDebut: studentData.dateDebut || "",
       parcours: studentData.parcours || "",
       thematiqueMemoire: studentData.thematiqueMemoire || "",
-      statut: studentData.statut || "En cours",
+      statut: archiveRequested ? "Archivé" : studentData.statut || "En cours",
+      statutSuivi,
+      echeance: studentData.echeance || "",
+      urgentManuel: studentData.urgentManuel === true,
       notesInitiales: studentData.notesInitiales || "",
       dateCreation: now,
       dateModification: now,
@@ -210,13 +272,15 @@
       return null;
     }
 
-    database.students[index] = {
+    const archiveRequested = updatedData.statutSuivi === "archive" || updatedData.statut === "Archivé";
+    database.students[index] = normalizeStudent({
       ...database.students[index],
       ...updatedData,
+      ...(archiveRequested ? { statut: "Archivé", statutSuivi: "archive" } : {}),
       id,
       dateCreation: database.students[index].dateCreation,
       dateModification: new Date().toISOString(),
-    };
+    });
     saveDatabase(database);
     return database.students[index];
   }
@@ -235,7 +299,7 @@
   }
 
   function archiveStudent(id) {
-    return updateStudent(id, { statut: "Archivé" });
+    return updateStudent(id, { statut: "Archivé", statutSuivi: "archive" });
   }
 
   function getStudentsByParcours(parcours) {
@@ -266,5 +330,8 @@
     getStudentsByParcours,
     getActiveStudents,
     getArchivedStudents,
+    getStatutSuiviLabel,
+    getNiveauEcheance,
+    isUrgent,
   });
 })(window);

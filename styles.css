@@ -2006,3 +2006,234 @@ p {
     padding: 18px;
   }
 }
+
+/* === AGENDA ACCUEIL === */
+.agenda-workspace {
+  padding: 24px;
+  margin-bottom: 16px;
+  border-color: #dcded9;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(48, 45, 40, 0.045);
+}
+
+.agenda-workspace .section-heading {
+  margin-bottom: 6px;
+}
+
+.agenda-description {
+  margin: 0 0 18px;
+  color: var(--muted);
+}
+
+.agenda-config {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.agenda-config-field textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.agenda-actions {
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.agenda-config .form-message {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.agenda-preview {
+  min-height: 180px;
+  overflow: hidden;
+  border: 1px solid #d9dedb;
+  border-radius: 8px;
+  background: #fafbf9;
+}
+
+.agenda-preview iframe {
+  display: block;
+  width: 100%;
+  height: 520px;
+  border: 0;
+  background: var(--surface);
+}
+
+.agenda-preview .empty-state {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  margin: 0;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .agenda-config {
+    grid-template-columns: 1fr;
+  }
+
+  .agenda-actions {
+    min-width: 0;
+  }
+
+  .agenda-preview iframe {
+    height: 440px;
+  }
+}
+
+@media (max-width: 520px) {
+  .agenda-workspace {
+    padding: 18px;
+  }
+
+  .agenda-preview iframe {
+    height: 380px;
+  }
+}
+
+/* === STATUTS === */
+.statut-pastilles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.statut-pastille {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 26px;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #edf0ee;
+  color: #4f5b56;
+  font-size: 0.73rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.statut-pastille[data-statut="nouveau"] {
+  border-color: #d8ddda;
+  background: #edf0ee;
+  color: #4f5b56;
+}
+
+.statut-pastille[data-statut="questionnaire-envoye"] {
+  border-color: #c9d9e5;
+  background: #eaf1f6;
+  color: #45677d;
+}
+
+.statut-pastille[data-statut="questionnaire-recu"] {
+  border-color: #b9d0df;
+  background: #dfeef6;
+  color: #315f7a;
+}
+
+.statut-pastille[data-statut="memoire-importe"] {
+  border-color: #d7c9dc;
+  background: #eee7f1;
+  color: #674f70;
+}
+
+.statut-pastille[data-statut="analyse-en-cours"] {
+  border-color: #e4d1a7;
+  background: #f8eed8;
+  color: #795c22;
+}
+
+.statut-pastille[data-statut="retour-envoye"] {
+  border-color: #c4d9ca;
+  background: #e6f1e9;
+  color: #3d694a;
+}
+
+.statut-pastille[data-statut="a-relancer"] {
+  border-color: #d9bb80;
+  background: #f5e4bd;
+  color: #725019;
+}
+
+.statut-pastille[data-statut="termine"] {
+  border-color: #afc9b7;
+  background: #dceade;
+  color: #2f5c3b;
+}
+
+.statut-pastille[data-statut="archive"] {
+  border-color: #d1d4d2;
+  background: #e5e7e6;
+  color: #69716d;
+  text-decoration: line-through;
+}
+
+.statut-pastille-urgent,
+.statut-pastille-depassee {
+  border-color: #e4bdc2;
+  background: #f8e4e7;
+  color: #8b3542;
+}
+
+.statut-pastille-bientot {
+  border-color: #e5cf9f;
+  background: #f8edcf;
+  color: #76571d;
+}
+
+.statut-filter {
+  display: grid;
+  grid-template-columns: auto minmax(190px, 260px);
+  gap: 10px;
+  align-items: center;
+  margin: -4px 0 18px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.statut-filter select {
+  min-height: 40px;
+  padding: 0 34px 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.checkbox-inline {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfb;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.checkbox-inline input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+@media (max-width: 520px) {
+  .statut-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .statut-filter select {
+    width: 100%;
+  }
+}

@@ -18,6 +18,34 @@
     list.append(row);
   }
 
+  function createStatusBadges(student) {
+    const badges = document.createElement("div");
+    badges.className = "statut-pastilles";
+
+    const followUpStatus = document.createElement("span");
+    followUpStatus.className = "statut-pastille";
+    followUpStatus.dataset.statut = student.statutSuivi;
+    followUpStatus.textContent = storage.getStatutSuiviLabel(student.statutSuivi);
+    badges.append(followUpStatus);
+
+    const deadlineLevel = storage.getNiveauEcheance(student);
+    const deadlineBadge = document.createElement("span");
+    if (deadlineLevel === "depassee") {
+      deadlineBadge.className = "statut-pastille statut-pastille-depassee";
+      deadlineBadge.textContent = "Échéance dépassée";
+      badges.append(deadlineBadge);
+    } else if (storage.isUrgent(student)) {
+      deadlineBadge.className = "statut-pastille statut-pastille-urgent";
+      deadlineBadge.textContent = "Urgent";
+      badges.append(deadlineBadge);
+    } else if (deadlineLevel === "bientot") {
+      deadlineBadge.className = "statut-pastille statut-pastille-bientot";
+      deadlineBadge.textContent = "Bientôt";
+      badges.append(deadlineBadge);
+    }
+    return badges;
+  }
+
   function createCard(student) {
     const card = document.createElement("article");
     card.className = "student-card";
@@ -26,7 +54,7 @@
     const header = document.createElement("div");
     const category = document.createElement("span"); category.className = "category-label"; category.textContent = parcoursLabels[student.parcours];
     const name = document.createElement("h3"); name.textContent = `${student.prenom} ${student.nom}`.trim() || "Étudiant sans nom";
-    header.append(category, name);
+    header.append(category, name, createStatusBadges(student));
 
     const details = document.createElement("dl");
     addDetail(details, "Début d’accompagnement", student.dateDebut);
