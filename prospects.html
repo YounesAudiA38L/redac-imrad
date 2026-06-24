@@ -18,6 +18,30 @@
         <div class="status-panel"><span class="status-label">Prospects</span><strong id="prospect-total-count">0</strong><span class="status-note">Enregistrés localement</span></div>
       </section>
 
+      <section class="workspace" aria-labelledby="new-prospect-title">
+        <div class="section-heading"><div><p class="eyebrow">Nouveau contact</p><h2 id="new-prospect-title">Ajouter un prospect</h2></div></div>
+        <p class="prospect-create-note">Saisie rapide de premier contact. Les informations complémentaires pourront être ajoutées après le questionnaire prospect général.</p>
+        <form id="prospect-create-form" class="prospect-create-form">
+          <div class="form-grid">
+            <label class="field"><span>Pseudo</span><input name="pseudo" type="text" /></label>
+            <label class="field"><span>Prénom</span><input name="prenom" type="text" /></label>
+            <label class="field"><span>Nom</span><input name="nom" type="text" /></label>
+            <label class="field"><span>Email</span><input name="email" type="email" /></label>
+            <label class="field"><span>Niveau</span><select name="niveau"><option value="">Non renseigné</option><option value="K3">K3</option><option value="K4">K4</option><option value="K5">K5</option><option value="Rattrapage">Rattrapage</option><option value="Autre">Autre</option></select></label>
+            <label class="field full-width"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
+          </div>
+          <div class="form-actions"><button class="primary-action" type="submit">Ajouter le prospect</button></div>
+          <p id="prospect-create-status" class="form-message" role="status" aria-live="polite" hidden></p>
+        </form>
+      </section>
+
+      <section class="workspace" aria-labelledby="prospect-list-title">
+        <div class="section-heading prospect-list-heading"><div><p class="eyebrow">Questionnaire prospect général</p><h2 id="prospect-list-title">Prospects enregistrés</h2></div><button class="primary-action" id="prepare-all-prospect-questionnaires" type="button">Préparer les questionnaires à envoyer</button></div>
+        <p id="prospect-bulk-status" class="form-message" role="status" aria-live="polite" hidden></p>
+        <div id="prospect-list" class="prospect-list" aria-live="polite"></div>
+        <p id="prospect-action-status" class="form-message" role="status" aria-live="polite" hidden></p>
+      </section>
+
       <section class="workspace" aria-labelledby="prospect-relance-title">
         <div class="section-heading"><div><p class="eyebrow">Brouillons Gmail</p><h2 id="prospect-relance-title">Relance des prospects sans réponse</h2></div><div id="prospect-relance-count" class="prospect-relance-counter">0 prospect(s) à relancer</div></div>
 
@@ -48,9 +72,29 @@ Sois fière de ton mémoire</textarea><small>Variables disponibles : {{prenom}},
 
         <div class="prospect-scheduler-disabled" aria-disabled="true"><strong>Programmer l’envoi</strong><p>Fonction à activer dans une étape ultérieure.</p></div>
       </section>
+
+      <section class="workspace prospect-questionnaire-config" aria-labelledby="prospect-questionnaire-config-title">
+        <div class="section-heading"><div><p class="eyebrow">Configuration</p><h2 id="prospect-questionnaire-config-title">Connexion Apps Script — Questionnaire prospect</h2></div></div>
+        <div class="prospect-questionnaire-config-grid">
+          <section class="prospect-questionnaire-config-card" aria-labelledby="prospect-questionnaire-send-title">
+            <h3 id="prospect-questionnaire-send-title">Envoi questionnaire prospect</h3>
+            <label class="field"><span>URL Apps Script — Envoi questionnaire prospect</span><input id="prospect-questionnaire-send-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <label class="field"><span>Token Apps Script — Envoi questionnaire prospect</span><input id="prospect-questionnaire-send-token" type="password" autocomplete="off" /></label>
+            <button class="secondary-action" id="save-prospect-questionnaire-send" type="button">Enregistrer</button>
+            <p id="prospect-questionnaire-send-status" class="form-message" role="status" aria-live="polite" hidden></p>
+          </section>
+          <section class="prospect-questionnaire-config-card" aria-labelledby="prospect-questionnaire-responses-title">
+            <h3 id="prospect-questionnaire-responses-title">Réponses questionnaire prospect</h3>
+            <label class="field"><span>URL Apps Script — Réponses questionnaire prospect</span><input id="prospect-questionnaire-responses-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <label class="field"><span>Token Apps Script — Réponses questionnaire prospect</span><input id="prospect-questionnaire-responses-token" type="password" autocomplete="off" /></label>
+            <button class="secondary-action" id="save-prospect-questionnaire-responses" type="button">Enregistrer</button>
+            <p id="prospect-questionnaire-responses-status" class="form-message" role="status" aria-live="polite" hidden></p>
+          </section>
+        </div>
+      </section>
     </main>
     <script src="navigation.js?v=9" defer></script>
-    <script src="js/storage.js?v=17" defer></script>
-    <script src="js/prospects.js?v=1" defer></script>
+    <script src="js/storage.js?v=20" defer></script>
+    <script src="js/prospects.js?v=6" defer></script>
   </body>
 </html>

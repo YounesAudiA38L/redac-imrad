@@ -278,6 +278,157 @@ p {
   margin: 0;
 }
 
+/* === QUESTIONNAIRE PROSPECT GÉNÉRAL === */
+.prospect-create-form,
+.prospect-list {
+  display: grid;
+  gap: 16px;
+}
+
+.prospect-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-top: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(48, 45, 40, 0.04);
+}
+
+.prospect-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prospect-card-header h3,
+.prospect-card-header p {
+  margin: 0;
+}
+
+.prospect-card-header p {
+  margin-top: 5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.prospect-status-badges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.prospect-status-badge {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid #d8e1dc;
+  border-radius: 8px;
+  background: var(--color-prospects-soft);
+  color: #496557;
+}
+
+.prospect-status-badge small {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.prospect-status-badge strong {
+  font-size: 0.88rem;
+}
+
+.prospect-status-badge[data-tone="prospect-a-relancer"],
+.prospect-status-badge[data-tone="questionnaire-envoye"] {
+  border-color: #e1cfa7;
+  background: #f8eed8;
+  color: #76571d;
+}
+
+.prospect-status-badge[data-tone="prospect-interesse"],
+.prospect-status-badge[data-tone="questionnaire-repondu"],
+.prospect-status-badge[data-tone="response-yes"] {
+  border-color: #bcd3c4;
+  background: #e5f0e8;
+  color: #356044;
+}
+
+.prospect-status-badge[data-tone="prospect-transforme"] {
+  border-color: #c5d4df;
+  background: #e8f0f5;
+  color: #45677d;
+}
+
+.prospect-status-badge[data-tone="prospect-archive"],
+.prospect-status-badge[data-tone="prospect-non-interesse"] {
+  border-color: #d7d9d8;
+  background: #eef0ef;
+  color: #68716d;
+}
+
+.prospect-status-badge[data-tone="response-no"],
+.prospect-status-badge[data-tone="questionnaire-a-envoyer"] {
+  border-color: #deded9;
+  background: #f7f7f4;
+  color: #68716d;
+}
+
+.prospect-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 700px) {
+  .prospect-status-badges {
+    grid-template-columns: 1fr;
+  }
+
+  .prospect-card-actions {
+    display: grid;
+  }
+}
+
+/* === CONNEXION QUESTIONNAIRE PROSPECT === */
+.prospect-questionnaire-config {
+  border-color: #dfe4e0;
+  background: #fafbf9;
+  box-shadow: none;
+}
+
+.prospect-questionnaire-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.prospect-questionnaire-config-card {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.prospect-questionnaire-config-card h3,
+.prospect-questionnaire-config-card .form-message {
+  margin: 0;
+}
+
+.prospect-questionnaire-config-card .secondary-action {
+  justify-self: start;
+}
+
+@media (max-width: 760px) {
+  .prospect-questionnaire-config-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .summary-card {
   min-height: 156px;
   padding: 22px;
@@ -2809,5 +2960,197 @@ input[type="file"]::file-selector-button {
   .danger-action,
   .filter-button {
     border-radius: 999px;
+  }
+}
+
+/* === PROSPECTS — CARTE IDENTITÉ + PILULES === */
+.prospect-card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, auto);
+  gap: 24px;
+  align-items: start;
+}
+
+.prospect-identity {
+  min-width: 0;
+}
+
+.prospect-identity h3 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+.prospect-identity-details {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.prospect-identity-details > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.prospect-identity-details dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.prospect-identity-details dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.prospect-followup-pills {
+  display: flex;
+  min-width: 210px;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.prospect-pill {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 13px;
+  border: 1px solid #d8e1dc;
+  border-radius: 999px;
+  background: var(--color-prospects-soft);
+  color: #496557;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.prospect-pill[data-tone="prospect-a-relancer"] {
+  border-color: #dfc68f;
+  background: #f6e8c8;
+  color: #73521c;
+}
+
+.prospect-pill[data-tone="prospect-interesse"],
+.prospect-pill[data-tone="questionnaire-repondu"],
+.prospect-pill[data-tone="response-yes"] {
+  border-color: #b8d1c0;
+  background: #e3efe6;
+  color: #356044;
+}
+
+.prospect-pill[data-tone="prospect-transforme"],
+.prospect-pill[data-tone="questionnaire-envoye"] {
+  border-color: #c4d4df;
+  background: #e6eff5;
+  color: #45677d;
+}
+
+.prospect-pill[data-tone="prospect-non-interesse"],
+.prospect-pill[data-tone="prospect-archive"] {
+  border-color: #d4d8d5;
+  background: #ecefed;
+  color: #626c67;
+}
+
+.prospect-pill[data-tone="questionnaire-a-envoyer"] {
+  border-color: #dfd1b8;
+  background: #f5eee1;
+  color: #735f3e;
+}
+
+.prospect-pill[data-tone="response-no"] {
+  border-color: #e1c6bd;
+  background: #f7e9e5;
+  color: #7b5144;
+}
+
+.prospect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 700px) {
+  .prospect-card-main {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .prospect-followup-pills {
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .prospect-actions {
+    display: grid;
+  }
+}
+
+@media (max-width: 420px) {
+  .prospect-identity-details > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+.prospect-list-heading {
+  align-items: center;
+}
+
+.prospect-create-note {
+  max-width: 720px;
+  margin: -4px 0 18px;
+  color: var(--muted);
+}
+
+.prospect-list-heading .primary-action {
+  flex: 0 0 auto;
+}
+
+.prospect-pill[data-tone="email-missing"] {
+  border-color: #dfbfc3;
+  background: #f7e7e9;
+  color: #7d434b;
+}
+
+.prospect-conversion-choice {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid #cbd9d2;
+  border-radius: 8px;
+  background: #f0f5f2;
+}
+
+.prospect-conversion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 700px) {
+  .prospect-list-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prospect-conversion-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .prospect-conversion-actions {
+    display: grid;
   }
 }

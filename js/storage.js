@@ -11,6 +11,31 @@
     termine: "Terminé",
     archive: "Archivé",
   });
+  const PROSPECT_STATUSES = new Set(["nouveau", "a-relancer", "interesse", "non-interesse", "transforme", "archive"]);
+  const QUESTIONNAIRE_STATUSES = new Set(["a-envoyer", "envoye", "repondu"]);
+
+  function createEmptyProspectResponse() {
+    return {
+      responseId: "",
+      email: "",
+      nomComplet: "",
+      telephone: "",
+      ifmk: "",
+      annee: "",
+      niveau: "",
+      avancementMemoire: "",
+      difficultePrincipale: "",
+      prochaineEcheance: "",
+      niveauBlocage: "",
+      niveauUrgence: "",
+      aideSouhaitee: "",
+      situationLibre: "",
+      questionAudrey: "",
+      cadreAccepte: false,
+      redactionNonRemplacee: false,
+      rawResponse: {},
+    };
+  }
 
   function createEmptyDatabase() {
     return {
@@ -23,19 +48,53 @@
   }
 
   function normalizeProspect(prospect) {
+    const legacyStatus = String(prospect?.statut || "").trim().toLocaleLowerCase("fr-FR");
+    const inferredProspectStatus = prospect?.convertedStudentId
+      ? "transforme"
+      : legacyStatus === "converti en étudiant" ? "transforme"
+        : legacyStatus === "archivé" ? "archive"
+          : legacyStatus === "à relancer" ? "a-relancer"
+            : "nouveau";
+    const statutProspect = PROSPECT_STATUSES.has(prospect?.statutProspect) ? prospect.statutProspect : inferredProspectStatus;
+    const inferredQuestionnaireStatus = prospect?.questionnaireRepondu === true
+      ? "repondu"
+      : prospect?.questionnaireEnvoye === true ? "envoye" : "a-envoyer";
+    const questionnaireStatut = QUESTIONNAIRE_STATUSES.has(prospect?.questionnaireStatut)
+      ? prospect.questionnaireStatut
+      : inferredQuestionnaireStatus;
+    const questionnaireRepondu = questionnaireStatut === "repondu" || prospect?.questionnaireRepondu === true;
+    const questionnaireEnvoye = questionnaireRepondu || questionnaireStatut === "envoye" || prospect?.questionnaireEnvoye === true;
+    const response = prospect?.reponseQuestionnaireProspect && typeof prospect.reponseQuestionnaireProspect === "object"
+      ? prospect.reponseQuestionnaireProspect
+      : {};
     return {
       ...prospect,
       prenom: prospect?.prenom || "",
       nom: prospect?.nom || "",
+      pseudo: prospect?.pseudo || "",
       email: prospect?.email || "",
       telephone: prospect?.telephone || "",
+      ifmk: prospect?.ifmk || "",
+      niveau: prospect?.niveau || "",
       source: prospect?.source || "",
       dateContact: prospect?.dateContact || "",
       parcoursInteresse: prospect?.parcoursInteresse || "non défini",
+      parcoursPressenti: prospect?.parcoursPressenti || "",
+      parcoursValide: prospect?.parcoursValide || "",
       messageInitial: prospect?.messageInitial || "",
-      questionnaireEnvoye: prospect?.questionnaireEnvoye === true,
+      statutProspect,
+      questionnaireStatut,
+      questionnaireEnvoye,
       questionnaireEnvoyeLe: prospect?.questionnaireEnvoyeLe || "",
-      questionnaireRepondu: prospect?.questionnaireRepondu === true,
+      questionnaireRepondu,
+      questionnaireReponduLe: prospect?.questionnaireReponduLe || "",
+      reponseQuestionnaireProspect: {
+        ...createEmptyProspectResponse(),
+        ...response,
+        cadreAccepte: response.cadreAccepte === true,
+        redactionNonRemplacee: response.redactionNonRemplacee === true,
+        rawResponse: response.rawResponse && typeof response.rawResponse === "object" ? response.rawResponse : {},
+      },
       draftId: prospect?.draftId || "",
       statut: prospect?.statut || "nouveau",
       notes: prospect?.notes || "",
@@ -59,6 +118,7 @@
       statutSuivi,
       echeance: student?.echeance || "",
       urgentManuel: student?.urgentManuel === true,
+      niveau: student?.niveau || "",
     };
   }
 
@@ -137,6 +197,7 @@
       email: studentData.email || "",
       ifmk: studentData.ifmk || "",
       telephone: studentData.telephone || "",
+      niveau: studentData.niveau || "",
       dateDebut: studentData.dateDebut || "",
       parcours: studentData.parcours || "",
       thematiqueMemoire: studentData.thematiqueMemoire || "",
@@ -190,16 +251,25 @@
       id: global.crypto?.randomUUID?.() || `prospect-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       prenom: prospectData.prenom || "",
       nom: prospectData.nom || "",
+      pseudo: prospectData.pseudo || "",
       email: prospectData.email || "",
       telephone: prospectData.telephone || "",
+      ifmk: prospectData.ifmk || "",
+      niveau: prospectData.niveau || "",
       source: prospectData.source || "",
       dateContact: prospectData.dateContact || new Date().toISOString().slice(0, 10),
       parcoursInteresse: prospectData.parcoursInteresse || "non défini",
+      parcoursPressenti: prospectData.parcoursPressenti || "",
+      parcoursValide: prospectData.parcoursValide || "",
       messageInitial: prospectData.messageInitial || "",
       questionnaireUrl: prospectData.questionnaireUrl || "",
       questionnaireEnvoye: prospectData.questionnaireEnvoye === true,
       questionnaireEnvoyeLe: prospectData.questionnaireEnvoyeLe || "",
       questionnaireRepondu: prospectData.questionnaireRepondu === true,
+      questionnaireReponduLe: prospectData.questionnaireReponduLe || "",
+      statutProspect: prospectData.statutProspect || "nouveau",
+      questionnaireStatut: prospectData.questionnaireStatut || "a-envoyer",
+      reponseQuestionnaireProspect: prospectData.reponseQuestionnaireProspect || createEmptyProspectResponse(),
       draftId: prospectData.draftId || "",
       statut: prospectData.statut || "nouveau",
       notes: prospectData.notes || "",
@@ -228,13 +298,13 @@
     const database = getDatabase();
     const index = database.prospects.findIndex((prospect) => prospect.id === id);
     if (index === -1) return null;
-    database.prospects[index] = {
+    database.prospects[index] = normalizeProspect({
       ...database.prospects[index],
       ...updatedData,
       id,
       dateCreation: database.prospects[index].dateCreation,
       dateModification: new Date().toISOString(),
-    };
+    });
     saveDatabase(database);
     return database.prospects[index];
   }
@@ -244,20 +314,37 @@
     if (!prospect) return null;
     if (prospect.convertedStudentId) return getStudentById(prospect.convertedStudentId);
 
-    const defaultNotes = [prospect.messageInitial, prospect.notes].filter(Boolean).join("\n\n");
+    const response = prospect.reponseQuestionnaireProspect || createEmptyProspectResponse();
+    const responseNameParts = String(response.nomComplet || "").trim().split(/\s+/).filter(Boolean);
+    const responseFirstName = responseNameParts.shift() || "";
+    const responseLastName = responseNameParts.join(" ");
+    const defaultNotes = [
+      prospect.messageInitial,
+      prospect.notes,
+      response.situationLibre,
+      response.aideSouhaitee ? `Aide souhaitée : ${response.aideSouhaitee}` : "",
+    ].filter(Boolean).join("\n\n");
+    const parcours = studentData.parcours || prospect.parcoursValide || "";
     const student = createStudent({
-      prenom: prospect.prenom,
-      nom: prospect.nom,
-      email: prospect.email,
-      telephone: prospect.telephone,
-      dateDebut: new Date().toISOString().slice(0, 10),
-      parcours: ["point-memoire", "k4", "k5", "rattrapage"].includes(prospect.parcoursInteresse) ? prospect.parcoursInteresse : "",
-      statut: "En cours",
-      notesInitiales: defaultNotes,
       ...studentData,
+      prenom: studentData.prenom || prospect.prenom || responseFirstName || prospect.pseudo || "",
+      nom: studentData.nom || prospect.nom || responseLastName || "",
+      email: studentData.email || prospect.email || response.email || "",
+      telephone: studentData.telephone || prospect.telephone || response.telephone || "",
+      ifmk: studentData.ifmk || prospect.ifmk || response.ifmk || "",
+      niveau: studentData.niveau || prospect.niveau || response.niveau || response.annee || "",
+      dateDebut: new Date().toISOString().slice(0, 10),
+      parcours,
+      statut: "En cours",
+      notesInitiales: studentData.notesInitiales || defaultNotes,
+      donneesParcours: {
+        questionnaireProspect: response,
+        ...(studentData.donneesParcours || {}),
+      },
     });
     updateProspect(id, {
       statut: "converti en étudiant",
+      statutProspect: "transforme",
       convertedStudentId: student.id,
       dateConversion: new Date().toISOString(),
     });
