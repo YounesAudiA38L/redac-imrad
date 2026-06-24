@@ -7,6 +7,57 @@
   const parcours = container.dataset.parcoursStudents;
   const count = document.querySelector("[data-parcours-count]");
   const parcoursLabels = { "point-memoire": "Point Mémoire", k4: "K4", k5: "K5", rattrapage: "Rattrapage" };
+  const statusValues = ["nouveau", "questionnaire-envoye", "questionnaire-recu", "memoire-importe", "analyse-en-cours", "retour-envoye", "a-relancer", "termine", "archive"];
+  let termeRechercheParcours = "";
+  let statutFiltreParcours = "tous";
+
+  function normalizeSearchValue(value) {
+    return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
+  }
+
+  function createFilterBar() {
+    const controls = document.createElement("div");
+    controls.className = "filter-bar parcours-filter-bar";
+    controls.setAttribute("role", "search");
+
+    const searchField = document.createElement("label");
+    searchField.className = "field parcours-search-field";
+    const searchLabel = document.createElement("span");
+    searchLabel.textContent = "Rechercher un étudiant";
+    const searchInput = document.createElement("input");
+    searchInput.type = "search";
+    searchInput.placeholder = "Rechercher (nom, email…)";
+    searchInput.autocomplete = "off";
+    searchField.append(searchLabel, searchInput);
+
+    const statusField = document.createElement("label");
+    statusField.className = "field parcours-status-field";
+    const statusLabel = document.createElement("span");
+    statusLabel.textContent = "Statut de suivi";
+    const statusSelect = document.createElement("select");
+    const allStatuses = document.createElement("option");
+    allStatuses.value = "tous";
+    allStatuses.textContent = "Tous les statuts";
+    statusSelect.append(allStatuses);
+    statusValues.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = storage.getStatutSuiviLabel(value);
+      statusSelect.append(option);
+    });
+    statusField.append(statusLabel, statusSelect);
+    controls.append(searchField, statusField);
+    container.before(controls);
+
+    searchInput.addEventListener("input", () => {
+      termeRechercheParcours = searchInput.value;
+      render();
+    });
+    statusSelect.addEventListener("change", () => {
+      statutFiltreParcours = statusSelect.value;
+      render();
+    });
+  }
 
   function addDetail(list, label, value) {
     const row = document.createElement("div");
@@ -87,18 +138,29 @@
   }
 
   function render() {
-    const students = storage.getStudentsByParcours(parcours);
-    count.textContent = String(students.length);
+    const allStudents = storage.getStudentsByParcours(parcours);
+    count.textContent = String(allStudents.length);
+    const searchTerm = normalizeSearchValue(termeRechercheParcours.trim());
+    const students = allStudents.filter((student) => {
+      const matchesSearch = !searchTerm || [student.prenom, student.nom, student.email]
+        .some((value) => normalizeSearchValue(value).includes(searchTerm));
+      const matchesStatus = statutFiltreParcours === "tous" || student.statutSuivi === statutFiltreParcours;
+      return matchesSearch && matchesStatus;
+    });
     container.textContent = "";
 
-    if (students.length === 0) {
-      const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Aucun étudiant accompagné dans ce parcours."; container.append(empty); return;
+    if (allStudents.length === 0) {
+      const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Aucun étudiant accompagné dans ce parcours."; container.append(empty);
+    } else if (students.length === 0) {
+      const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Aucun étudiant ne correspond à ta recherche."; container.append(empty);
+    } else {
+      students.forEach((student) => container.append(createCard(student)));
     }
 
-    students.forEach((student) => container.append(createCard(student)));
     window.dispatchEvent(new CustomEvent("redac:parcours-rendered", { detail: { parcours } }));
   }
 
+  createFilterBar();
   render();
   window.addEventListener("redac:students-changed", render);
 })();

@@ -22,7 +22,8 @@
 
     items.forEach((item) => {
       const link = document.createElement("a");
-      link.className = "main-tab";
+      link.className = `main-tab nav-item-${item.id}`;
+      link.dataset.navId = item.id;
       link.href = item.href;
       link.textContent = item.label;
 
