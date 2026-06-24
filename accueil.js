@@ -26,9 +26,16 @@ const notificationsList = document.querySelector("#notifications-list");
 const showAllDeadlinesButton = document.querySelector("#show-all-deadlines");
 const agendaEmbedInput = document.querySelector("#google-agenda-embed-input");
 const saveAgendaButton = document.querySelector("#save-google-agenda");
-const openAgendaButton = document.querySelector("#open-google-agenda");
 const agendaMessage = document.querySelector("#google-agenda-message");
 const agendaPreview = document.querySelector("#google-agenda-preview");
+const appointmentForm = document.querySelector("#google-appointment-form");
+const appointmentStudentSelect = document.querySelector("#agenda-student");
+const appointmentButton = document.querySelector("#prepare-google-appointment");
+const appointmentMessage = document.querySelector("#appointment-message");
+const calendarEndpointInput = document.querySelector("#calendar-apps-script-endpoint");
+const calendarTokenInput = document.querySelector("#calendar-apps-script-token");
+const saveCalendarConnectionButton = document.querySelector("#save-calendar-connection");
+const calendarConfigMessage = document.querySelector("#calendar-config-message");
 
 let currentFilter = "tous";
 let currentStatusFilter = "tous";
@@ -56,6 +63,9 @@ const allowedAgendaPaths = new Set([
   "/calendar/u/0/embed",
   "/calendar/u/1/embed",
 ]);
+const CALENDAR_ID = "redac.imrad@gmail.com";
+const CALENDAR_ENDPOINT_KEY = "redacImrad.calendar.endpoint";
+const CALENDAR_TOKEN_KEY = "redacImrad.calendar.token";
 
 function initializeStatusFilter() {
   statusFilter.textContent = "";
@@ -87,6 +97,7 @@ function validateAgendaUrl(rawValue) {
   try {
     const parsedUrl = new URL(extractedUrl);
     if (parsedUrl.origin !== "https://calendar.google.com" || parsedUrl.username || parsedUrl.password || !allowedAgendaPaths.has(parsedUrl.pathname)) return null;
+    if (parsedUrl.searchParams.get("src") !== CALENDAR_ID) return null;
     return parsedUrl.toString();
   } catch {
     return null;
@@ -101,7 +112,6 @@ function setAgendaMessage(message, state = "") {
 
 function renderGoogleAgenda(url) {
   agendaPreview.textContent = "";
-  openAgendaButton.disabled = !url;
 
   if (!url) {
     const empty = document.createElement("p");
@@ -122,17 +132,13 @@ function renderGoogleAgenda(url) {
   agendaPreview.append(iframe);
 }
 
-function getStoredAgendaUrl() {
-  return validateAgendaUrl(storage.getDatabase().settings.googleAgendaEmbedUrl);
-}
-
 function initializeGoogleAgenda() {
   const database = storage.getDatabase();
   const storedValue = database.settings.googleAgendaEmbedUrl || "";
   const validUrl = validateAgendaUrl(storedValue);
   agendaEmbedInput.value = validUrl || storedValue;
   renderGoogleAgenda(validUrl);
-  if (storedValue && !validUrl) setAgendaMessage("L’URL d’agenda enregistrée n’est pas valide.", "error");
+  if (storedValue && !validUrl) setAgendaMessage(`L’URL enregistrée ne correspond pas à l’agenda ${CALENDAR_ID}.`, "error");
 }
 
 function createTextareaField(name, label) {
@@ -350,6 +356,7 @@ function renderStudents() {
   });
   studentList.textContent = "";
   renderPilotage();
+  renderAppointmentStudents();
 
   if (students.length === 0) {
     const empty = document.createElement("p");
@@ -494,10 +501,165 @@ function normalizeSearchText(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
 }
 
+function renderAppointmentStudents() {
+  const selectedStudentId = appointmentStudentSelect.value;
+  const students = storage.getActiveStudents()
+    .slice()
+    .sort((first, second) => `${first.prenom} ${first.nom}`.localeCompare(`${second.prenom} ${second.nom}`, "fr"));
+
+  appointmentStudentSelect.textContent = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = students.length ? "Sélectionner un étudiant" : "Aucun étudiant actif";
+  appointmentStudentSelect.append(placeholder);
+
+  students.forEach((student) => {
+    const option = document.createElement("option");
+    option.value = student.id;
+    option.textContent = `${student.prenom || ""} ${student.nom || ""}`.trim() || student.email || "Étudiant sans nom";
+    appointmentStudentSelect.append(option);
+  });
+
+  if (students.some((student) => student.id === selectedStudentId)) appointmentStudentSelect.value = selectedStudentId;
+  appointmentStudentSelect.disabled = students.length === 0;
+  appointmentButton.disabled = students.length === 0;
+}
+
+function setAppointmentMessage(message, state = "") {
+  appointmentMessage.textContent = message;
+  appointmentMessage.dataset.state = state;
+  appointmentMessage.hidden = !message;
+}
+
+function setCalendarConfigMessage(message, state = "") {
+  calendarConfigMessage.textContent = message;
+  calendarConfigMessage.dataset.state = state;
+  calendarConfigMessage.hidden = !message;
+}
+
+function parseCalendarEndpoint(rawValue) {
+  try {
+    const parsedUrl = new URL(String(rawValue || "").trim());
+    if (parsedUrl.protocol !== "https:" || parsedUrl.hostname !== "script.google.com" || !parsedUrl.pathname.includes("/macros/s/") || !parsedUrl.pathname.endsWith("/exec")) return null;
+    const tokenFromUrl = parsedUrl.searchParams.get("token") || "";
+    parsedUrl.search = "";
+    parsedUrl.hash = "";
+    return { endpoint: parsedUrl.toString(), tokenFromUrl };
+  } catch {
+    return null;
+  }
+}
+
+function initializeCalendarConnection() {
+  calendarEndpointInput.value = localStorage.getItem(CALENDAR_ENDPOINT_KEY) || "";
+  calendarTokenInput.value = localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
+}
+
+function saveCalendarConnection() {
+  const parsedEndpoint = parseCalendarEndpoint(calendarEndpointInput.value);
+  const token = calendarTokenInput.value.trim() || parsedEndpoint?.tokenFromUrl || "";
+  if (!parsedEndpoint || !token) {
+    setCalendarConfigMessage("Renseignez une URL de déploiement Apps Script valide et son token.", "error");
+    return false;
+  }
+
+  localStorage.setItem(CALENDAR_ENDPOINT_KEY, parsedEndpoint.endpoint);
+  localStorage.setItem(CALENDAR_TOKEN_KEY, token);
+  calendarEndpointInput.value = parsedEndpoint.endpoint;
+  calendarTokenInput.value = token;
+  setCalendarConfigMessage(`Connexion enregistrée pour l’agenda ${CALENDAR_ID}.`, "success");
+  return true;
+}
+
+async function addGoogleAppointment(event) {
+  event.preventDefault();
+  const studentId = document.querySelector("#agenda-student")?.value || "";
+  const date = document.querySelector("#agenda-date")?.value || "";
+  const heureDebut = document.querySelector("#agenda-heure-debut")?.value || "";
+  const typeRdv = document.querySelector("#agenda-type-rdv")?.value || "";
+  const dureeMinutes = document.querySelector("#agenda-duree")?.value || "60";
+  const notes = document.querySelector("#agenda-notes")?.value || "";
+  const student = storage.getStudentById(studentId);
+
+  console.log("Données formulaire Agenda", {
+    date,
+    heureDebut,
+    typeRdv,
+    dureeMinutes,
+    notes,
+  });
+
+  if (!date) {
+    setAppointmentMessage("Merci de renseigner la date du rendez-vous.", "error");
+    return;
+  }
+  if (!heureDebut) {
+    setAppointmentMessage("Merci de renseigner l’heure de début.", "error");
+    return;
+  }
+  if (!typeRdv) {
+    setAppointmentMessage("Merci de renseigner le type de rendez-vous.", "error");
+    return;
+  }
+  if (!student) {
+    setAppointmentMessage("Merci de sélectionner l’étudiant concerné.", "error");
+    return;
+  }
+
+  const parsedEndpoint = parseCalendarEndpoint(localStorage.getItem(CALENDAR_ENDPOINT_KEY));
+  const agendaScriptUrl = parsedEndpoint?.endpoint || "";
+  const agendaToken = localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
+  if (!agendaScriptUrl || !agendaToken) {
+    setAppointmentMessage("Connexion Apps Script de l’agenda à configurer.", "error");
+    return;
+  }
+
+  const payload = {
+    token: agendaToken,
+    studentId: student?.id || "",
+    prenom: student?.prenom || "",
+    nom: student?.nom || "",
+    email: student?.email || "",
+    parcours: student?.parcours || "",
+    typeRdv,
+    date,
+    heureDebut,
+    dureeMinutes: Number(dureeMinutes || 60),
+    notes,
+  };
+
+  console.log("Payload Agenda envoyé", payload);
+
+  const url =
+    agendaScriptUrl +
+    "?action=createCalendarEvent" +
+    "&token=" + encodeURIComponent(agendaToken) +
+    "&payload=" + encodeURIComponent(JSON.stringify(payload));
+
+  appointmentButton.disabled = true;
+  appointmentButton.textContent = "Ajout en cours";
+  setAppointmentMessage(`Ajout dans l’agenda ${CALENDAR_ID} en cours.`, "");
+
+  try {
+    const response = await fetch(url);
+    const result = await response.json();
+    if (!response.ok || result.success !== true) throw new Error(result.error || "Apps Script n’a pas confirmé la création du rendez-vous.");
+    setAppointmentMessage("Rendez-vous ajouté à l’agenda.", "success");
+    appointmentForm.reset();
+    renderAppointmentStudents();
+  } catch (error) {
+    setAppointmentMessage(`L’ajout a échoué : ${error.message}`, "error");
+  } finally {
+    appointmentButton.textContent = "Ajouter à l’agenda";
+    appointmentButton.disabled = storage.getActiveStudents().length === 0;
+  }
+}
+
 initializeStatusFilter();
 renderPointAxes();
 renderStudents();
 initializeGoogleAgenda();
+initializeCalendarConnection();
 
 parcoursSelect.addEventListener("change", () => showParcoursFields(parcoursSelect.value));
 fileInput.addEventListener("change", () => { fileStatus.textContent = fileInput.files?.[0]?.name || "Aucun fichier sélectionné."; });
@@ -545,7 +707,7 @@ showAllDeadlinesButton.addEventListener("click", () => {
 saveAgendaButton.addEventListener("click", () => {
   const validUrl = validateAgendaUrl(agendaEmbedInput.value);
   if (!validUrl) {
-    setAgendaMessage("Utilisez une URL d’intégration Google Agenda valide ou son code iframe complet.", "error");
+    setAgendaMessage(`Utilisez le code d’intégration de l’agenda ${CALENDAR_ID}.`, "error");
     return;
   }
 
@@ -557,14 +719,8 @@ saveAgendaButton.addEventListener("click", () => {
   setAgendaMessage("L’agenda a été enregistré.", "success");
 });
 
-openAgendaButton.addEventListener("click", () => {
-  const agendaUrl = getStoredAgendaUrl();
-  if (!agendaUrl) {
-    setAgendaMessage("Ajoute d’abord une URL Google Agenda.", "error");
-    return;
-  }
-  window.open(agendaUrl, "_blank", "noopener,noreferrer");
-});
+saveCalendarConnectionButton.addEventListener("click", saveCalendarConnection);
+appointmentForm.addEventListener("submit", addGoogleAppointment);
 
 quickProspectForm.addEventListener("submit", (event) => {
   event.preventDefault();

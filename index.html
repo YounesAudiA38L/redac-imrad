@@ -108,12 +108,35 @@
         <div class="student-grid" id="student-list" aria-live="polite"></div>
       </section>
 
+      <section class="workspace appointment-workspace" aria-labelledby="appointment-title">
+        <div class="section-heading"><div><p class="eyebrow">Agenda redac.imrad@gmail.com</p><h2 id="appointment-title">Ajouter un rendez-vous à l’agenda</h2></div></div>
+        <p class="appointment-description">Le rendez-vous est créé dans l’agenda professionnel via Apps Script, sans quitter le logiciel.</p>
+        <div class="appointment-config">
+          <label class="field"><span>URL Apps Script — Agenda redac.imrad@gmail.com</span><input id="calendar-apps-script-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+          <label class="field"><span>Token Apps Script — Agenda</span><input id="calendar-apps-script-token" type="password" autocomplete="off" /></label>
+          <button class="secondary-action" id="save-calendar-connection" type="button">Enregistrer la connexion</button>
+          <p id="calendar-config-message" class="form-message" role="status" aria-live="polite" hidden></p>
+        </div>
+        <form id="google-appointment-form" class="appointment-form" novalidate>
+          <div class="appointment-form-grid">
+            <label class="field appointment-student-field"><span>Étudiant concerné</span><select id="agenda-student" name="studentId" required></select></label>
+            <label class="field"><span>Type de rendez-vous</span><select id="agenda-type-rdv" name="typeRdv" required><option value="Point Mémoire">Point Mémoire</option><option value="Visio K4">Visio K4</option><option value="Visio K5">Visio K5</option><option value="Rattrapage">Rattrapage</option><option value="Autre">Autre</option></select></label>
+            <label class="field"><span>Date</span><input id="agenda-date" name="date" type="date" required /></label>
+            <label class="field"><span>Heure de début</span><input id="agenda-heure-debut" name="heureDebut" type="time" required /></label>
+            <label class="field"><span>Durée</span><select id="agenda-duree" name="dureeMinutes" required><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option><option value="90">90 min</option></select></label>
+            <label class="field full-width"><span>Notes</span><textarea id="agenda-notes" name="notes" rows="4" placeholder="Informations utiles pour le rendez-vous"></textarea></label>
+          </div>
+          <div class="appointment-actions"><button class="primary-action" id="prepare-google-appointment" type="submit">Ajouter à l’agenda</button></div>
+          <p id="appointment-message" class="form-message" role="status" aria-live="polite" hidden></p>
+        </form>
+      </section>
+
       <section class="workspace agenda-workspace" aria-labelledby="agenda-title">
         <div class="section-heading"><div><p class="eyebrow">Organisation</p><h2 id="agenda-title">Mes rendez-vous</h2></div></div>
-        <p class="agenda-description">Agenda intégré via Google Agenda. Les rendez-vous restent gérés dans Google Agenda.</p>
+        <p class="agenda-description">Agenda redac.imrad@gmail.com intégré via Google Agenda.</p>
         <div class="agenda-config">
           <label class="field agenda-config-field"><span>Code ou URL d’intégration Google Agenda</span><textarea id="google-agenda-embed-input" rows="3" placeholder="https://calendar.google.com/calendar/embed?..."></textarea></label>
-          <div class="agenda-actions"><button class="primary-action" type="button" id="save-google-agenda">Enregistrer l’agenda</button><button class="secondary-action" type="button" id="open-google-agenda" disabled>Ouvrir Google Agenda</button></div>
+          <div class="agenda-actions"><button class="primary-action" type="button" id="save-google-agenda">Enregistrer l’agenda</button></div>
           <p id="google-agenda-message" class="form-message" role="status" aria-live="polite" hidden></p>
         </div>
         <div id="google-agenda-preview" class="agenda-preview"><p class="empty-state">Aucun agenda connecté pour le moment.</p></div>
@@ -143,6 +166,6 @@
     <script src="js/storage.js?v=18" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
     <script src="js/livrables-k4.js?v=12" defer></script>
-    <script src="accueil.js?v=17" defer></script>
+    <script src="accueil.js?v=20" defer></script>
   </body>
 </html>

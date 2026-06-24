@@ -1,6 +1,7 @@
 :root {
   color-scheme: light;
-  --bg: #f6f7f4;
+  --color-background: #f3f0e8;
+  --bg: var(--color-background);
   --surface: #ffffff;
   --surface-muted: #eef2ed;
   --text: #1d2522;
@@ -1632,9 +1633,108 @@ p {
   }
 }
 
+/* === PRÉPARATION RENDEZ-VOUS === */
+.appointment-workspace {
+  padding: 24px;
+  margin-bottom: 16px;
+  border-color: #dcded9;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(48, 45, 40, 0.045);
+}
+
+.appointment-workspace .section-heading {
+  margin-bottom: 6px;
+}
+
+.appointment-description {
+  margin: 0 0 18px;
+  color: var(--muted);
+}
+
+.appointment-config {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.8fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.appointment-config .form-message {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.appointment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.appointment-student-field {
+  grid-column: span 2;
+}
+
+.appointment-form-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.appointment-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.appointment-form .form-message {
+  margin: 14px 0 0;
+}
+
+@media (max-width: 860px) {
+  .appointment-config,
+  .appointment-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .appointment-config .secondary-action {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .appointment-workspace {
+    padding: 18px;
+  }
+
+  .appointment-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-config {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-config .secondary-action,
+  .appointment-config .form-message {
+    grid-column: auto;
+  }
+
+  .appointment-student-field,
+  .appointment-form-grid .full-width {
+    grid-column: auto;
+  }
+
+  .appointment-actions,
+  .appointment-actions .primary-action {
+    width: 100%;
+  }
+}
+
 /* === ACCUEIL PILOTAGE === */
 .accueil-pilotage {
-  background: #f7f6f3;
+  background: var(--color-background);
 }
 
 .accueil-pilotage .topbar {
