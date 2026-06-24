@@ -429,6 +429,86 @@ p {
   }
 }
 
+/* === PROSPECTS — RÉPONSES QUESTIONNAIRE === */
+.prospect-response-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #cadbd2;
+  border-radius: 8px;
+  background: #f2f7f4;
+}
+
+.prospect-response-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prospect-response-heading h4,
+.prospect-response-heading p {
+  margin: 0;
+}
+
+.prospect-response-heading p {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.prospect-response-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.prospect-response-item {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dce7e1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.prospect-response-item-wide {
+  grid-column: 1 / -1;
+}
+
+.prospect-response-item dt {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.prospect-response-item dd {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.prospect-response-panel > .secondary-action {
+  justify-self: start;
+}
+
+@media (max-width: 700px) {
+  .prospect-response-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .prospect-response-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prospect-response-item-wide {
+    grid-column: auto;
+  }
+}
+
 .summary-card {
   min-height: 156px;
   padding: 22px;
@@ -1825,7 +1905,7 @@ p {
   gap: 16px;
 }
 
-.appointment-student-field {
+.appointment-contact-field {
   grid-column: span 2;
 }
 
@@ -1872,7 +1952,7 @@ p {
     grid-column: auto;
   }
 
-  .appointment-student-field,
+  .appointment-contact-field,
   .appointment-form-grid .full-width {
     grid-column: auto;
   }
@@ -3151,6 +3231,97 @@ input[type="file"]::file-selector-button {
   }
 
   .prospect-conversion-actions {
+    display: grid;
+  }
+}
+
+/* === MAILS PROSPECTS === */
+.prospect-mails-workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.prospect-mail-note {
+  max-width: 850px;
+  margin: -6px 0 2px;
+  color: var(--muted);
+}
+
+.prospect-mail-list {
+  display: grid;
+  gap: 12px;
+}
+
+.prospect-mail-row {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.prospect-mail-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.prospect-mail-row h3,
+.prospect-mail-row p {
+  margin: 0;
+}
+
+.prospect-mail-row h3 {
+  margin-bottom: 5px;
+}
+
+.prospect-mail-row-main p {
+  color: var(--muted);
+}
+
+.prospect-mail-actions,
+.prospect-mail-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.prospect-mail-actions {
+  justify-content: flex-end;
+}
+
+.prospect-mail-editor {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.prospect-mail-editor[hidden] {
+  display: none;
+}
+
+.prospect-mail-editor .field small {
+  color: var(--muted);
+}
+
+.prospect-mail-row > .form-message {
+  margin-top: 12px;
+}
+
+.prospect-questionnaire-config-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+@media (max-width: 760px) {
+  .prospect-mail-row-main {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prospect-mail-actions,
+  .prospect-mail-editor-actions {
     display: grid;
   }
 }

@@ -29,7 +29,10 @@ const saveAgendaButton = document.querySelector("#save-google-agenda");
 const agendaMessage = document.querySelector("#google-agenda-message");
 const agendaPreview = document.querySelector("#google-agenda-preview");
 const appointmentForm = document.querySelector("#google-appointment-form");
-const appointmentStudentSelect = document.querySelector("#agenda-student");
+const appointmentContactTypeSelect = document.querySelector("#agenda-contact-type");
+const appointmentContactSelect = document.querySelector("#agenda-contact");
+const appointmentContactLabel = document.querySelector("#agenda-contact-label");
+const appointmentTimeSelect = document.querySelector("#agenda-heure-debut");
 const appointmentButton = document.querySelector("#prepare-google-appointment");
 const appointmentMessage = document.querySelector("#appointment-message");
 const calendarEndpointInput = document.querySelector("#calendar-apps-script-endpoint");
@@ -356,7 +359,7 @@ function renderStudents() {
   });
   studentList.textContent = "";
   renderPilotage();
-  renderAppointmentStudents();
+  renderAppointmentContacts();
 
   if (students.length === 0) {
     const empty = document.createElement("p");
@@ -501,28 +504,78 @@ function normalizeSearchText(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
 }
 
-function renderAppointmentStudents() {
-  const selectedStudentId = appointmentStudentSelect.value;
-  const students = storage.getActiveStudents()
-    .slice()
-    .sort((first, second) => `${first.prenom} ${first.nom}`.localeCompare(`${second.prenom} ${second.nom}`, "fr"));
+function getProspectAppointmentName(prospect) {
+  return `${prospect.prenom || ""} ${prospect.nom || ""}`.trim()
+    || prospect.pseudo
+    || prospect.reponseQuestionnaireProspect?.nomComplet
+    || prospect.email
+    || "Prospect sans nom";
+}
 
-  appointmentStudentSelect.textContent = "";
+function getActiveAppointmentProspects() {
+  return storage.getProspects().filter((prospect) => {
+    const currentStatus = prospect.statutProspect || "nouveau";
+    const legacyStatus = String(prospect.statut || "").trim().toLocaleLowerCase("fr-FR");
+    return currentStatus !== "archive"
+      && currentStatus !== "transforme"
+      && legacyStatus !== "archivé"
+      && legacyStatus !== "converti en étudiant";
+  });
+}
+
+function renderAppointmentContacts() {
+  const contactType = appointmentContactTypeSelect.value || "student";
+  const selectedContactId = appointmentContactSelect.value;
+  const contacts = (contactType === "prospect" ? getActiveAppointmentProspects() : storage.getActiveStudents())
+    .slice()
+    .sort((first, second) => {
+      const firstName = contactType === "prospect" ? getProspectAppointmentName(first) : `${first.prenom || ""} ${first.nom || ""}`.trim();
+      const secondName = contactType === "prospect" ? getProspectAppointmentName(second) : `${second.prenom || ""} ${second.nom || ""}`.trim();
+      return firstName.localeCompare(secondName, "fr");
+    });
+
+  appointmentContactLabel.textContent = contactType === "prospect" ? "Prospect concerné" : "Étudiant concerné";
+  appointmentContactSelect.textContent = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = students.length ? "Sélectionner un étudiant" : "Aucun étudiant actif";
-  appointmentStudentSelect.append(placeholder);
+  placeholder.textContent = contacts.length
+    ? `Sélectionner ${contactType === "prospect" ? "un prospect" : "un étudiant"}`
+    : `Aucun ${contactType === "prospect" ? "prospect" : "étudiant"} actif`;
+  appointmentContactSelect.append(placeholder);
 
-  students.forEach((student) => {
+  contacts.forEach((contact) => {
     const option = document.createElement("option");
-    option.value = student.id;
-    option.textContent = `${student.prenom || ""} ${student.nom || ""}`.trim() || student.email || "Étudiant sans nom";
-    appointmentStudentSelect.append(option);
+    option.value = contact.id;
+    option.textContent = contactType === "prospect"
+      ? getProspectAppointmentName(contact)
+      : `${contact.prenom || ""} ${contact.nom || ""}`.trim() || contact.email || "Étudiant sans nom";
+    appointmentContactSelect.append(option);
   });
 
-  if (students.some((student) => student.id === selectedStudentId)) appointmentStudentSelect.value = selectedStudentId;
-  appointmentStudentSelect.disabled = students.length === 0;
-  appointmentButton.disabled = students.length === 0;
+  if (contacts.some((contact) => contact.id === selectedContactId)) appointmentContactSelect.value = selectedContactId;
+  appointmentContactSelect.disabled = contacts.length === 0;
+  appointmentButton.disabled = contacts.length === 0;
+}
+
+function initializeAppointmentTimeSlots() {
+  appointmentTimeSelect.textContent = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Sélectionner une heure";
+  appointmentTimeSelect.append(placeholder);
+  for (let minutes = 8 * 60; minutes <= 20 * 60; minutes += 15) {
+    const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const quarter = String(minutes % 60).padStart(2, "0");
+    const option = document.createElement("option");
+    option.value = `${hours}:${quarter}`;
+    option.textContent = option.value;
+    appointmentTimeSelect.append(option);
+  }
+}
+
+function formatCalendarLocalDateTime(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
 }
 
 function setAppointmentMessage(message, state = "") {
@@ -573,13 +626,16 @@ function saveCalendarConnection() {
 
 async function addGoogleAppointment(event) {
   event.preventDefault();
-  const studentId = document.querySelector("#agenda-student")?.value || "";
+  const contactType = appointmentContactTypeSelect.value || "student";
+  const contactId = appointmentContactSelect.value || "";
   const date = document.querySelector("#agenda-date")?.value || "";
   const heureDebut = document.querySelector("#agenda-heure-debut")?.value || "";
   const typeRdv = document.querySelector("#agenda-type-rdv")?.value || "";
   const dureeMinutes = document.querySelector("#agenda-duree")?.value || "60";
   const notes = document.querySelector("#agenda-notes")?.value || "";
-  const student = storage.getStudentById(studentId);
+  const student = contactType === "student" ? storage.getStudentById(contactId) : null;
+  const prospect = contactType === "prospect" ? storage.getProspectById(contactId) : null;
+  const contact = prospect || student;
 
   console.log("Données formulaire Agenda", {
     date,
@@ -601,8 +657,8 @@ async function addGoogleAppointment(event) {
     setAppointmentMessage("Merci de renseigner le type de rendez-vous.", "error");
     return;
   }
-  if (!student) {
-    setAppointmentMessage("Merci de sélectionner l’étudiant concerné.", "error");
+  if (!contact) {
+    setAppointmentMessage(`Merci de sélectionner ${contactType === "prospect" ? "le prospect" : "l’étudiant"} concerné.`, "error");
     return;
   }
 
@@ -614,18 +670,57 @@ async function addGoogleAppointment(event) {
     return;
   }
 
+  const duration = Number(dureeMinutes || 60);
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours, minutes] = heureDebut.split(":").map(Number);
+  const startDate = new Date(year, month - 1, day, hours, minutes, 0);
+  const endDate = new Date(startDate.getTime() + duration * 60 * 1000);
+  const responseData = prospect?.reponseQuestionnaireProspect || {};
+  const displayName = prospect
+    ? getProspectAppointmentName(prospect)
+    : `${student.prenom || ""} ${student.nom || ""}`.trim() || student.email || "Étudiant sans nom";
+  const prenom = prospect ? prospect.prenom || prospect.pseudo || "" : student.prenom || "";
+  const nom = prospect ? prospect.nom || "" : student.nom || "";
+  const email = prospect ? prospect.email || "" : student.email || "";
+  const parcours = prospect ? "Prospect" : student.parcours || "";
+  const details = prospect
+    ? [
+      "Type : Prospect",
+      `Nom / pseudo : ${displayName}`,
+      `Email : ${email || "Non renseigné"}`,
+      `Niveau : ${prospect.niveau || responseData.niveau || responseData.annee || "Non renseigné"}`,
+      "",
+      "Notes :",
+      [prospect.notes, notes].filter(Boolean).join("\n") || "Aucune note renseignée.",
+    ].join("\n")
+    : [
+      "Type : Étudiant",
+      `Nom : ${displayName}`,
+      `Email : ${email || "Non renseigné"}`,
+      `Parcours : ${parcoursLabels[parcours] || parcours || "Non renseigné"}`,
+      "",
+      "Notes :",
+      notes || "Aucune note renseignée.",
+    ].join("\n");
+
   const payload = {
     token: agendaToken,
-    studentId: student?.id || "",
-    prenom: student?.prenom || "",
-    nom: student?.nom || "",
-    email: student?.email || "",
-    parcours: student?.parcours || "",
+    calendarId: CALENDAR_ID,
+    studentId: contact.id,
+    prenom,
+    nom,
+    email,
+    parcours,
     typeRdv,
     date,
     heureDebut,
-    dureeMinutes: Number(dureeMinutes || 60),
+    dureeMinutes: duration,
     notes,
+    title: `${typeRdv} — ${displayName}`,
+    start: formatCalendarLocalDateTime(startDate),
+    end: formatCalendarLocalDateTime(endDate),
+    timezone: "Europe/Paris",
+    details,
   };
 
   console.log("Payload Agenda envoyé", payload);
@@ -644,14 +739,15 @@ async function addGoogleAppointment(event) {
     const response = await fetch(url);
     const result = await response.json();
     if (!response.ok || result.success !== true) throw new Error(result.error || "Apps Script n’a pas confirmé la création du rendez-vous.");
-    setAppointmentMessage("Rendez-vous ajouté à l’agenda.", "success");
+    setAppointmentMessage("Rendez-vous ajouté à l’agenda", "success");
     appointmentForm.reset();
-    renderAppointmentStudents();
+    appointmentContactTypeSelect.value = contactType;
+    renderAppointmentContacts();
   } catch (error) {
     setAppointmentMessage(`L’ajout a échoué : ${error.message}`, "error");
   } finally {
     appointmentButton.textContent = "Ajouter à l’agenda";
-    appointmentButton.disabled = storage.getActiveStudents().length === 0;
+    appointmentButton.disabled = appointmentContactSelect.disabled;
   }
 }
 
@@ -660,12 +756,14 @@ renderPointAxes();
 renderStudents();
 initializeGoogleAgenda();
 initializeCalendarConnection();
+initializeAppointmentTimeSlots();
 
 parcoursSelect.addEventListener("change", () => showParcoursFields(parcoursSelect.value));
 fileInput.addEventListener("change", () => { fileStatus.textContent = fileInput.files?.[0]?.name || "Aucun fichier sélectionné."; });
 addButton.addEventListener("click", () => openForm());
 closeButton.addEventListener("click", closeForm);
 cancelButton.addEventListener("click", closeForm);
+appointmentContactTypeSelect.addEventListener("change", renderAppointmentContacts);
 
 filterButtons.forEach((button) => {
   button.addEventListener("click", () => {

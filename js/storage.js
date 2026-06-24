@@ -17,8 +17,11 @@
   function createEmptyProspectResponse() {
     return {
       responseId: "",
+      receivedAt: "",
       email: "",
       nomComplet: "",
+      prenom: "",
+      nom: "",
       telephone: "",
       ifmk: "",
       annee: "",
@@ -183,6 +186,83 @@
     return normalized;
   }
 
+  function getProspectsSettings() {
+    const settings = getDatabase().settings;
+    return settings.prospects && typeof settings.prospects === "object" ? settings.prospects : {};
+  }
+
+  function updateProspectsSettings(updatedSettings) {
+    const database = getDatabase();
+    database.settings = {
+      ...database.settings,
+      prospects: {
+        ...(database.settings.prospects || {}),
+        ...updatedSettings,
+      },
+    };
+    saveDatabase(database);
+    return database.settings.prospects;
+  }
+
+  function getProspectsFormUrl() {
+    return getProspectsSettings().formUrl || "";
+  }
+
+  function saveProspectsFormUrl(url) {
+    return updateProspectsSettings({ formUrl: String(url || "").trim() }).formUrl;
+  }
+
+  function getProspectsMailEndpoint() {
+    return getProspectsSettings().mailEndpoint || "";
+  }
+
+  function saveProspectsMailEndpoint(url) {
+    return updateProspectsSettings({ mailEndpoint: String(url || "").trim() }).mailEndpoint;
+  }
+
+  function getProspectsMailToken() {
+    return getProspectsSettings().mailToken || "";
+  }
+
+  function saveProspectsMailToken(token) {
+    return updateProspectsSettings({ mailToken: String(token || "").trim() }).mailToken;
+  }
+
+  function getProspectsResponsesEndpoint() {
+    return getProspectsSettings().responsesEndpoint || "";
+  }
+
+  function saveProspectsResponsesEndpoint(url) {
+    return updateProspectsSettings({ responsesEndpoint: String(url || "").trim() }).responsesEndpoint;
+  }
+
+  function getProspectsResponsesToken() {
+    return getProspectsSettings().responsesToken || "";
+  }
+
+  function saveProspectsResponsesToken(token) {
+    return updateProspectsSettings({ responsesToken: String(token || "").trim() }).responsesToken;
+  }
+
+  function getProspectsMailTemplates() {
+    const templates = getProspectsSettings().mailTemplates;
+    return templates && typeof templates === "object" ? templates : {};
+  }
+
+  function saveProspectsMailTemplate(type, template) {
+    if (!["questionnaire", "relance"].includes(type)) return getProspectsMailTemplates();
+    const currentTemplates = getProspectsMailTemplates();
+    return updateProspectsSettings({
+      mailTemplates: {
+        ...currentTemplates,
+        [type]: {
+          objet: String(template?.objet || ""),
+          corps: String(template?.corps || ""),
+        },
+      },
+    }).mailTemplates;
+  }
+
   function createStudent(studentData) {
     const database = getDatabase();
     const now = new Date().toISOString();
@@ -309,34 +389,102 @@
     return database.prospects[index];
   }
 
+  function getFirstFilledValue(...values) {
+    const value = values.find((item) => String(item || "").trim());
+    return value === undefined ? "" : String(value).trim();
+  }
+
+  function extractProspectFirstName(fullName) {
+    return String(fullName || "").trim().split(/\s+/).filter(Boolean)[0] || "";
+  }
+
+  function extractProspectLastName(fullName) {
+    return String(fullName || "").trim().split(/\s+/).filter(Boolean).slice(1).join(" ");
+  }
+
+  function normalizeStudentParcours(value) {
+    const normalized = String(value || "").trim().toLocaleLowerCase("fr-FR");
+    if (["point-memoire", "point mémoire", "point memoire"].includes(normalized)) return "point-memoire";
+    if (["k4", "k5", "rattrapage"].includes(normalized)) return normalized;
+    return "";
+  }
+
+  function buildProspectConversionNotes(prospect, response) {
+    const valueOrFallback = (value) => String(value || "").trim() || "Non renseigné";
+    const summary = [
+      "Prospect converti depuis l’onglet Prospects.",
+      "",
+      `Niveau : ${valueOrFallback(prospect.niveau || response.niveau)}`,
+      `IFMK : ${valueOrFallback(prospect.ifmk || response.ifmk)}`,
+      `Téléphone : ${valueOrFallback(prospect.telephone || response.telephone)}`,
+      `Avancement mémoire : ${valueOrFallback(response.avancementMemoire)}`,
+      `Difficulté principale : ${valueOrFallback(response.difficultePrincipale)}`,
+      `Prochaine échéance : ${valueOrFallback(response.prochaineEcheance)}`,
+      `Niveau de blocage : ${valueOrFallback(response.niveauBlocage)}`,
+      `Urgence : ${valueOrFallback(response.niveauUrgence)}`,
+      `Aide souhaitée : ${valueOrFallback(response.aideSouhaitee)}`,
+      "",
+      "Situation décrite :",
+      valueOrFallback(response.situationLibre),
+      "",
+      "Question pour Audrey :",
+      valueOrFallback(response.questionAudrey),
+    ];
+    const firstContactNotes = [prospect.messageInitial, prospect.notes].filter((value) => String(value || "").trim());
+    if (firstContactNotes.length) summary.push("", "Notes du premier contact :", firstContactNotes.join("\n\n"));
+    return summary.join("\n");
+  }
+
   function convertProspectToStudent(id, studentData = {}) {
     const prospect = getProspectById(id);
     if (!prospect) return null;
-    if (prospect.convertedStudentId) return getStudentById(prospect.convertedStudentId);
+    const existingStudentId = prospect.studentId || prospect.convertedStudentId;
+    if (existingStudentId) return getStudentById(existingStudentId);
 
     const response = prospect.reponseQuestionnaireProspect || createEmptyProspectResponse();
-    const responseNameParts = String(response.nomComplet || "").trim().split(/\s+/).filter(Boolean);
-    const responseFirstName = responseNameParts.shift() || "";
-    const responseLastName = responseNameParts.join(" ");
-    const defaultNotes = [
-      prospect.messageInitial,
-      prospect.notes,
-      response.situationLibre,
-      response.aideSouhaitee ? `Aide souhaitée : ${response.aideSouhaitee}` : "",
-    ].filter(Boolean).join("\n\n");
-    const parcours = studentData.parcours || prospect.parcoursValide || "";
+    const parcours = normalizeStudentParcours(studentData.parcours)
+      || normalizeStudentParcours(prospect.parcoursValide)
+      || normalizeStudentParcours(prospect.parcoursPressenti)
+      || normalizeStudentParcours(prospect.parcoursVise);
+    if (!parcours) return null;
+
+    const prenom = getFirstFilledValue(
+      studentData.prenom,
+      prospect.prenom,
+      response.prenom,
+      extractProspectFirstName(response.nomComplet),
+      prospect.pseudo,
+    );
+    const nom = getFirstFilledValue(
+      studentData.nom,
+      prospect.nom,
+      response.nom,
+      extractProspectLastName(response.nomComplet),
+    );
+    const email = getFirstFilledValue(studentData.email, prospect.email, response.email);
+    const telephone = getFirstFilledValue(studentData.telephone, prospect.telephone, response.telephone);
+    const ifmk = getFirstFilledValue(studentData.ifmk, prospect.ifmk, response.ifmk);
+    const niveau = getFirstFilledValue(studentData.niveau, prospect.niveau, response.niveau, response.annee);
+    const notesInitiales = studentData.notesInitiales || buildProspectConversionNotes(prospect, response);
     const student = createStudent({
       ...studentData,
-      prenom: studentData.prenom || prospect.prenom || responseFirstName || prospect.pseudo || "",
-      nom: studentData.nom || prospect.nom || responseLastName || "",
-      email: studentData.email || prospect.email || response.email || "",
-      telephone: studentData.telephone || prospect.telephone || response.telephone || "",
-      ifmk: studentData.ifmk || prospect.ifmk || response.ifmk || "",
-      niveau: studentData.niveau || prospect.niveau || response.niveau || response.annee || "",
+      prenom,
+      nom,
+      email,
+      telephone,
+      ifmk,
+      niveau,
       dateDebut: new Date().toISOString().slice(0, 10),
       parcours,
       statut: "En cours",
-      notesInitiales: studentData.notesInitiales || defaultNotes,
+      statutSuivi: "nouveau",
+      urgentManuel: false,
+      thematiqueMemoire: studentData.thematiqueMemoire
+        || prospect.thematiqueMemoire
+        || response.situationLibre
+        || response.avancementMemoire
+        || "",
+      notesInitiales,
       donneesParcours: {
         questionnaireProspect: response,
         ...(studentData.donneesParcours || {}),
@@ -345,6 +493,7 @@
     updateProspect(id, {
       statut: "converti en étudiant",
       statutProspect: "transforme",
+      studentId: student.id,
       convertedStudentId: student.id,
       dateConversion: new Date().toISOString(),
     });
@@ -420,5 +569,17 @@
     getStatutSuiviLabel,
     getNiveauEcheance,
     isUrgent,
+    getProspectsFormUrl,
+    saveProspectsFormUrl,
+    getProspectsMailEndpoint,
+    saveProspectsMailEndpoint,
+    getProspectsMailToken,
+    saveProspectsMailToken,
+    getProspectsResponsesEndpoint,
+    saveProspectsResponsesEndpoint,
+    getProspectsResponsesToken,
+    saveProspectsResponsesToken,
+    getProspectsMailTemplates,
+    saveProspectsMailTemplate,
   });
 })(window);

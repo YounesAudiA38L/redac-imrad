@@ -35,66 +35,85 @@
         </form>
       </section>
 
+      <section class="workspace prospect-mails-workspace" aria-labelledby="prospect-mails-title">
+        <div class="section-heading"><div><p class="eyebrow">Préparation Gmail</p><h2 id="prospect-mails-title">Mails prospects</h2></div></div>
+        <p class="prospect-mail-note">Le logiciel prépare un brouillon ou un message à copier. Aucun envoi automatique. À vérifier et envoyer par Audrey.</p>
+        <div class="prospect-mail-list">
+          <article class="prospect-mail-row">
+            <div class="prospect-mail-row-main">
+              <div><h3>Mail questionnaire</h3><p id="prospect-questionnaire-mail-summary">Questionnaire général de première prise de contact.</p></div>
+              <div class="prospect-mail-actions"><button class="primary-action" id="prepare-all-prospect-questionnaires" type="button">Préparer les brouillons questionnaire</button><button class="secondary-action" type="button" data-mail-editor-toggle="questionnaire" aria-expanded="false">Éditer le mail</button></div>
+            </div>
+            <div class="prospect-mail-editor" data-mail-editor="questionnaire" hidden>
+              <label class="field"><span>Objet</span><input id="prospect-questionnaire-template-subject" type="text" /></label>
+              <label class="field"><span>Corps du mail</span><textarea id="prospect-questionnaire-template-body" rows="11"></textarea><small>Variables : {prenom}, {nom}, {email}, {niveau}, {lienForms}</small></label>
+              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="questionnaire">Enregistrer le modèle</button><button class="secondary-action" type="button" data-reset-mail-template="questionnaire">Réinitialiser le modèle</button></div>
+              <p id="prospect-questionnaire-template-status" class="form-message" role="status" aria-live="polite" hidden></p>
+            </div>
+            <p id="prospect-bulk-status" class="form-message" role="status" aria-live="polite" hidden></p>
+          </article>
+          <article class="prospect-mail-row">
+            <div class="prospect-mail-row-main">
+              <div><h3>Mail de relance</h3><p id="prospect-relance-count">0 prospect(s) à relancer</p></div>
+              <div class="prospect-mail-actions"><button class="primary-action" id="create-prospect-relance-drafts" type="button">Préparer les brouillons de relance</button><button class="secondary-action" type="button" data-mail-editor-toggle="relance" aria-expanded="false">Éditer le mail</button></div>
+            </div>
+            <div class="prospect-mail-editor" data-mail-editor="relance" hidden>
+              <label class="field"><span>Objet</span><input id="prospect-relance-template-subject" type="text" /></label>
+              <label class="field"><span>Corps du mail</span><textarea id="prospect-relance-template-body" rows="11"></textarea><small>Variables : {prenom}, {nom}, {email}, {niveau}, {lienForms}</small></label>
+              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="relance">Enregistrer le modèle</button><button class="secondary-action" type="button" data-reset-mail-template="relance">Réinitialiser le modèle</button></div>
+              <p id="prospect-relance-template-status" class="form-message" role="status" aria-live="polite" hidden></p>
+            </div>
+            <p id="prospect-relance-status" class="form-message" role="status" aria-live="polite" hidden></p>
+          </article>
+        </div>
+      </section>
+
       <section class="workspace" aria-labelledby="prospect-list-title">
-        <div class="section-heading prospect-list-heading"><div><p class="eyebrow">Questionnaire prospect général</p><h2 id="prospect-list-title">Prospects enregistrés</h2></div><button class="primary-action" id="prepare-all-prospect-questionnaires" type="button">Préparer les questionnaires à envoyer</button></div>
-        <p id="prospect-bulk-status" class="form-message" role="status" aria-live="polite" hidden></p>
+        <div class="section-heading prospect-list-heading">
+          <div><p class="eyebrow">Questionnaire prospect général</p><h2 id="prospect-list-title">Prospects enregistrés</h2></div>
+          <button class="primary-action" id="check-prospect-responses" type="button">Vérifier les réponses prospects</button>
+        </div>
+        <p id="prospect-responses-sync-status" class="form-message" role="status" aria-live="polite" hidden></p>
         <div id="prospect-list" class="prospect-list" aria-live="polite"></div>
         <p id="prospect-action-status" class="form-message" role="status" aria-live="polite" hidden></p>
       </section>
 
-      <section class="workspace" aria-labelledby="prospect-relance-title">
-        <div class="section-heading"><div><p class="eyebrow">Brouillons Gmail</p><h2 id="prospect-relance-title">Relance des prospects sans réponse</h2></div><div id="prospect-relance-count" class="prospect-relance-counter">0 prospect(s) à relancer</div></div>
-
-        <div class="prospect-relance-config">
-          <label class="field"><span>URL Apps Script — Relance prospects</span><input id="prospect-relance-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
-          <label class="field"><span>Token Apps Script — Relance prospects</span><input id="prospect-relance-token" type="password" autocomplete="off" /></label>
-          <button class="secondary-action" id="save-prospect-relance-config" type="button">Enregistrer la connexion</button>
-        </div>
-        <p id="prospect-relance-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
-
-        <form id="prospect-relance-form" class="prospect-relance-form">
-          <label class="field"><span>Objet du mail de relance</span><input name="subject" type="text" value="Petit rappel — questionnaire avant notre échange" /></label>
-          <label class="field"><span>Message de relance</span><textarea name="message" rows="13">Bonjour {{prenom}},
-
-Je me permets de te relancer concernant le questionnaire envoyé récemment.
-
-Il me permettra de mieux comprendre ta situation et de préparer un échange plus utile.
-
-Voici le lien du questionnaire :
-{{questionnaireUrl}}
-
-À bientôt,
-Audrey
-Sois fière de ton mémoire</textarea><small>Variables disponibles : {{prenom}}, {{nom}}, {{email}}, {{questionnaireUrl}}</small></label>
-          <div class="form-actions"><button class="primary-action" id="create-prospect-relance-drafts" type="submit">Créer les brouillons de relance</button></div>
-        </form>
-        <p id="prospect-relance-status" class="form-message" role="status" aria-live="polite" hidden></p>
-
-        <div class="prospect-scheduler-disabled" aria-disabled="true"><strong>Programmer l’envoi</strong><p>Fonction à activer dans une étape ultérieure.</p></div>
-      </section>
-
       <section class="workspace prospect-questionnaire-config" aria-labelledby="prospect-questionnaire-config-title">
-        <div class="section-heading"><div><p class="eyebrow">Configuration</p><h2 id="prospect-questionnaire-config-title">Connexion Apps Script — Questionnaire prospect</h2></div></div>
+        <div class="section-heading"><div><p class="eyebrow">Configuration</p><h2 id="prospect-questionnaire-config-title">Questionnaire prospects</h2></div></div>
+        <p class="prospect-mail-note">Aucun envoi automatique. Les brouillons et messages sont toujours à vérifier et envoyer par Audrey.</p>
         <div class="prospect-questionnaire-config-grid">
+          <section class="prospect-questionnaire-config-card" aria-labelledby="prospect-forms-title">
+            <h3 id="prospect-forms-title">Lien du questionnaire</h3>
+            <label class="field"><span>URL Google Forms prospects</span><input id="prospects-form-url" type="url" inputmode="url" placeholder="https://docs.google.com/forms/..." /></label>
+            <button class="secondary-action" id="save-prospects-form-url" type="button">Enregistrer le lien</button>
+            <p id="prospects-form-url-status" class="form-message" role="status" aria-live="polite" hidden></p>
+          </section>
           <section class="prospect-questionnaire-config-card" aria-labelledby="prospect-questionnaire-send-title">
-            <h3 id="prospect-questionnaire-send-title">Envoi questionnaire prospect</h3>
-            <label class="field"><span>URL Apps Script — Envoi questionnaire prospect</span><input id="prospect-questionnaire-send-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
-            <label class="field"><span>Token Apps Script — Envoi questionnaire prospect</span><input id="prospect-questionnaire-send-token" type="password" autocomplete="off" /></label>
-            <button class="secondary-action" id="save-prospect-questionnaire-send" type="button">Enregistrer</button>
+            <h3 id="prospect-questionnaire-send-title">Brouillon questionnaire prospect</h3>
+            <label class="field"><span>URL Apps Script — Brouillon questionnaire prospect</span><input id="prospect-questionnaire-send-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <label class="field"><span>Token Apps Script</span><input id="prospect-questionnaire-send-token" type="password" autocomplete="off" /></label>
+            <button class="secondary-action" id="save-prospect-questionnaire-send" type="button">Enregistrer la connexion</button>
             <p id="prospect-questionnaire-send-status" class="form-message" role="status" aria-live="polite" hidden></p>
           </section>
           <section class="prospect-questionnaire-config-card" aria-labelledby="prospect-questionnaire-responses-title">
-            <h3 id="prospect-questionnaire-responses-title">Réponses questionnaire prospect</h3>
-            <label class="field"><span>URL Apps Script — Réponses questionnaire prospect</span><input id="prospect-questionnaire-responses-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
-            <label class="field"><span>Token Apps Script — Réponses questionnaire prospect</span><input id="prospect-questionnaire-responses-token" type="password" autocomplete="off" /></label>
-            <button class="secondary-action" id="save-prospect-questionnaire-responses" type="button">Enregistrer</button>
+            <h3 id="prospect-questionnaire-responses-title">Réponses questionnaire prospects</h3>
+            <label class="field"><span>URL Apps Script — Réponses questionnaire prospects</span><input id="prospect-questionnaire-responses-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <label class="field"><span>Token Apps Script — Réponses questionnaire prospects</span><input id="prospect-questionnaire-responses-token" type="password" autocomplete="off" /></label>
+            <button class="secondary-action" id="save-prospect-questionnaire-responses" type="button">Enregistrer la connexion réponses</button>
             <p id="prospect-questionnaire-responses-status" class="form-message" role="status" aria-live="polite" hidden></p>
+          </section>
+          <section class="prospect-questionnaire-config-card" aria-labelledby="prospect-relance-config-title">
+            <h3 id="prospect-relance-config-title">Brouillons de relance</h3>
+            <label class="field"><span>URL Apps Script — Relance prospects</span><input id="prospect-relance-endpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+            <label class="field"><span>Token Apps Script — Relance prospects</span><input id="prospect-relance-token" type="password" autocomplete="off" /></label>
+            <button class="secondary-action" id="save-prospect-relance-config" type="button">Enregistrer la connexion</button>
+            <p id="prospect-relance-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
           </section>
         </div>
       </section>
     </main>
     <script src="navigation.js?v=9" defer></script>
-    <script src="js/storage.js?v=20" defer></script>
-    <script src="js/prospects.js?v=6" defer></script>
+    <script src="js/storage.js?v=22" defer></script>
+    <script src="js/prospects.js?v=8" defer></script>
   </body>
 </html>

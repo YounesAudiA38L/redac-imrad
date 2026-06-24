@@ -119,10 +119,11 @@
         </div>
         <form id="google-appointment-form" class="appointment-form" novalidate>
           <div class="appointment-form-grid">
-            <label class="field appointment-student-field"><span>Étudiant concerné</span><select id="agenda-student" name="studentId" required></select></label>
+            <label class="field"><span>Type de contact</span><select id="agenda-contact-type" name="contactType" required><option value="student">Étudiant</option><option value="prospect">Prospect</option></select></label>
+            <label class="field appointment-contact-field"><span id="agenda-contact-label">Étudiant concerné</span><select id="agenda-contact" name="contactId" required></select></label>
             <label class="field"><span>Type de rendez-vous</span><select id="agenda-type-rdv" name="typeRdv" required><option value="Point Mémoire">Point Mémoire</option><option value="Visio K4">Visio K4</option><option value="Visio K5">Visio K5</option><option value="Rattrapage">Rattrapage</option><option value="Autre">Autre</option></select></label>
             <label class="field"><span>Date</span><input id="agenda-date" name="date" type="date" required /></label>
-            <label class="field"><span>Heure de début</span><input id="agenda-heure-debut" name="heureDebut" type="time" required /></label>
+            <label class="field"><span>Heure de début</span><select id="agenda-heure-debut" name="heureDebut" required></select></label>
             <label class="field"><span>Durée</span><select id="agenda-duree" name="dureeMinutes" required><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option><option value="90">90 min</option></select></label>
             <label class="field full-width"><span>Notes</span><textarea id="agenda-notes" name="notes" rows="4" placeholder="Informations utiles pour le rendez-vous"></textarea></label>
           </div>
@@ -163,9 +164,9 @@
       </details>
     </main>
     <script src="navigation.js?v=9" defer></script>
-    <script src="js/storage.js?v=18" defer></script>
+    <script src="js/storage.js?v=20" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
     <script src="js/livrables-k4.js?v=12" defer></script>
-    <script src="accueil.js?v=20" defer></script>
+    <script src="accueil.js?v=21" defer></script>
   </body>
 </html>
