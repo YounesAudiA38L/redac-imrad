@@ -15,7 +15,7 @@
 
       <section class="status-band" aria-labelledby="prospects-title">
         <div><p class="eyebrow">Préparation des échanges</p><h2 id="prospects-title">Suivi des prospects</h2><p>Préparez les relances des personnes ayant reçu le questionnaire sans y avoir encore répondu.</p></div>
-        <div class="status-panel"><span class="status-label">Prospects</span><strong id="prospect-total-count">0</strong><span class="status-note">Enregistrés localement</span></div>
+        <div class="status-panel"><span class="status-label">Prospects</span><strong id="prospect-total-count">0</strong><span class="status-note">Actifs</span></div>
       </section>
 
       <section class="workspace" aria-labelledby="new-prospect-title">
@@ -55,13 +55,22 @@
           <article class="prospect-mail-row">
             <div class="prospect-mail-row-main">
               <div><h3>Mail de relance</h3><p id="prospect-relance-count">0 prospect(s) à relancer</p></div>
-              <div class="prospect-mail-actions"><button class="primary-action" id="create-prospect-relance-drafts" type="button">Préparer les brouillons de relance</button><button class="secondary-action" type="button" data-mail-editor-toggle="relance" aria-expanded="false">Éditer le mail</button></div>
+              <div class="prospect-mail-actions"><button class="primary-action" id="create-prospect-relance-drafts" type="button">Préparer les relances sans réponse depuis 7 jours</button><button class="secondary-action" type="button" data-mail-editor-toggle="relance" aria-expanded="false">Éditer le mail</button></div>
             </div>
             <div class="prospect-mail-editor" data-mail-editor="relance" hidden>
               <label class="field"><span>Objet</span><input id="prospect-relance-template-subject" type="text" /></label>
               <label class="field"><span>Corps du mail</span><textarea id="prospect-relance-template-body" rows="11"></textarea><small>Variables : {prenom}, {nom}, {email}, {niveau}, {lienForms}</small></label>
-              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="relance">Enregistrer le modèle</button><button class="secondary-action" type="button" data-reset-mail-template="relance">Réinitialiser le modèle</button></div>
+              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="relance">Enregistrer le modèle</button><button class="secondary-action" type="button" data-reset-mail-template="relance">Restaurer le modèle par défaut</button></div>
               <p id="prospect-relance-template-status" class="form-message" role="status" aria-live="polite" hidden></p>
+            </div>
+            <div id="prospect-relance-confirmation" class="prospect-relance-confirmation" hidden>
+              <h4 id="prospect-relance-confirmation-title">Prospects concernés</h4>
+              <p id="prospect-relance-confirmation-summary"></p>
+              <ul id="prospect-relance-confirmation-list"></ul>
+              <div class="prospect-relance-confirmation-actions">
+                <button class="primary-action" id="confirm-prospect-relances" type="button">Préparer les brouillons de relance</button>
+                <button class="secondary-action" id="cancel-prospect-relances" type="button">Annuler</button>
+              </div>
             </div>
             <p id="prospect-relance-status" class="form-message" role="status" aria-live="polite" hidden></p>
           </article>
@@ -76,6 +85,17 @@
         <p id="prospect-responses-sync-status" class="form-message" role="status" aria-live="polite" hidden></p>
         <div id="prospect-list" class="prospect-list" aria-live="polite"></div>
         <p id="prospect-action-status" class="form-message" role="status" aria-live="polite" hidden></p>
+      </section>
+
+      <div class="prospect-archives-toggle-wrap">
+        <button class="secondary-action prospect-archives-toggle" id="toggle-prospect-archives" type="button" aria-expanded="false">Voir les prospects archivés</button>
+      </div>
+
+      <section class="workspace prospect-archives-section" id="prospect-archives-section" aria-labelledby="prospect-archives-title" hidden>
+        <div class="section-heading"><div><p class="eyebrow">Archives</p><h2 id="prospect-archives-title">Archives prospects</h2></div></div>
+        <p class="sync-note">Les prospects archivés ou transformés sont conservés ici. La suppression définitive demande toujours confirmation et ne supprime jamais l’étudiant lié.</p>
+        <div id="prospect-archives-list" class="prospect-archives-list" aria-live="polite"></div>
+        <p id="prospect-archives-status" class="form-message" role="status" aria-live="polite" hidden></p>
       </section>
 
       <section class="workspace prospect-questionnaire-config" aria-labelledby="prospect-questionnaire-config-title">
@@ -113,7 +133,7 @@
       </section>
     </main>
     <script src="navigation.js?v=9" defer></script>
-    <script src="js/storage.js?v=22" defer></script>
-    <script src="js/prospects.js?v=8" defer></script>
+    <script src="js/storage.js?v=24" defer></script>
+    <script src="js/prospects.js?v=12" defer></script>
   </body>
 </html>

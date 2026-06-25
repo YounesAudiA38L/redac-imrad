@@ -21,7 +21,7 @@ Merci, à bientôt.
 Audrey`,
     },
     relance: {
-      objet: "Petit rappel pour ton questionnaire",
+      objet: "Petit rappel — ton questionnaire",
       corps: `Bonjour {prenom},
 
 Je me permets de revenir vers toi au sujet du questionnaire de première prise de contact.
@@ -57,6 +57,10 @@ Audrey`,
     responsesConnectionStatus: document.querySelector("#prospect-questionnaire-responses-status"),
     checkResponses: document.querySelector("#check-prospect-responses"),
     responsesSyncStatus: document.querySelector("#prospect-responses-sync-status"),
+    archivesToggle: document.querySelector("#toggle-prospect-archives"),
+    archivesSection: document.querySelector("#prospect-archives-section"),
+    archivesList: document.querySelector("#prospect-archives-list"),
+    archivesStatus: document.querySelector("#prospect-archives-status"),
     relanceEndpoint: document.querySelector("#prospect-relance-endpoint"),
     relanceToken: document.querySelector("#prospect-relance-token"),
     saveRelanceConnection: document.querySelector("#save-prospect-relance-config"),
@@ -64,12 +68,19 @@ Audrey`,
     createRelances: document.querySelector("#create-prospect-relance-drafts"),
     relanceStatus: document.querySelector("#prospect-relance-status"),
     relanceCount: document.querySelector("#prospect-relance-count"),
+    relanceConfirmation: document.querySelector("#prospect-relance-confirmation"),
+    relanceConfirmationSummary: document.querySelector("#prospect-relance-confirmation-summary"),
+    relanceConfirmationList: document.querySelector("#prospect-relance-confirmation-list"),
+    confirmRelances: document.querySelector("#confirm-prospect-relances"),
+    cancelRelances: document.querySelector("#cancel-prospect-relances"),
   };
 
   if (!global.RedacStorage || !elements.list) return;
 
   const storage = global.RedacStorage;
   let convertingProspectId = null;
+  let pendingRelancePlan = null;
+  let archivesVisible = false;
   const expandedResponseProspectIds = new Set();
 
   const prospectStatusLabels = {
@@ -157,6 +168,24 @@ Audrey`,
     return String(value || "").trim().toLocaleLowerCase("fr-FR");
   }
 
+  function normalizeMatchText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLocaleLowerCase("fr-FR");
+  }
+
+  function getProspectNameMatchKey(prospect) {
+    const directName = `${prospect.prenom || ""} ${prospect.nom || ""}`.trim();
+    return normalizeMatchText(directName || prospect.pseudo || getProspectResponse(prospect).nomComplet);
+  }
+
+  function getResponseNameMatchKey(response) {
+    return normalizeMatchText(response.nomComplet || `${response.prenom || ""} ${response.nom || ""}`.trim());
+  }
+
   function normalizeBoolean(value) {
     if (value === true || value === 1) return true;
     return ["true", "oui", "yes", "1"].includes(String(value || "").trim().toLocaleLowerCase("fr-FR"));
@@ -175,12 +204,64 @@ Audrey`,
       && status !== "transforme";
   }
 
-  function isProspectToRelance(prospect) {
+  function isActiveProspect(prospect) {
+    const status = prospect.statutProspect || "nouveau";
+    return status !== "archive" && status !== "transforme";
+  }
+
+  function getActiveProspects() {
+    if (typeof storage.getActiveProspects === "function") return storage.getActiveProspects();
+    return storage.getProspects().filter(isActiveProspect);
+  }
+
+  function getArchivedProspects() {
+    if (typeof storage.getArchivedProspects === "function") return storage.getArchivedProspects();
+    return storage.getProspects().filter((prospect) => !isActiveProspect(prospect));
+  }
+
+  function formatDate(value) {
+    if (!value) return "Non renseigné";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("fr-FR");
+  }
+
+  function isProspectAwaitingRelance(prospect) {
     const status = prospect.statutProspect || "nouveau";
     return prospect.questionnaireEnvoye === true
       && prospect.questionnaireRepondu !== true
+      && prospect.relanceEnvoyee !== true
       && status !== "transforme"
       && status !== "archive";
+  }
+
+  function getQuestionnaireSentTimestamp(prospect) {
+    const timestamp = Date.parse(prospect.questionnaireEnvoyeLe || "");
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+
+  function isProspectToRelance(prospect) {
+    const sentTimestamp = getQuestionnaireSentTimestamp(prospect);
+    return isProspectAwaitingRelance(prospect)
+      && Boolean(getProspectEmail(prospect))
+      && sentTimestamp !== null
+      && Date.now() - sentTimestamp > 7 * 24 * 60 * 60 * 1000;
+  }
+
+  function getRelancePlan() {
+    const plan = { eligible: [], ignoredEmail: 0, ignoredDate: 0 };
+    storage.getProspects().filter(isProspectAwaitingRelance).forEach((prospect) => {
+      if (!getProspectEmail(prospect)) {
+        plan.ignoredEmail += 1;
+        return;
+      }
+      if (getQuestionnaireSentTimestamp(prospect) === null) {
+        plan.ignoredDate += 1;
+        return;
+      }
+      if (isProspectToRelance(prospect)) plan.eligible.push(prospect);
+    });
+    return plan;
   }
 
   function getTemplates() {
@@ -217,6 +298,12 @@ Audrey`,
     pill.dataset.tone = tone;
     pill.textContent = text;
     return pill;
+  }
+
+  function getRelancePillLabel(prospect) {
+    if (!prospect.relanceEnvoyeeLe) return "Relance préparée";
+    const date = new Date(prospect.relanceEnvoyeeLe);
+    return Number.isNaN(date.getTime()) ? "Relance préparée" : `Relance préparée le ${date.toLocaleDateString("fr-FR")}`;
   }
 
   function appendIdentityDetail(container, label, value) {
@@ -320,12 +407,14 @@ Audrey`,
   }
 
   function renderProspectCards() {
-    const prospects = storage.getProspects();
+    const prospects = getActiveProspects();
     elements.list.textContent = "";
     if (!prospects.length) {
       const empty = document.createElement("p");
       empty.className = "empty-state";
-      empty.textContent = "Aucun prospect enregistré pour le moment.";
+      empty.textContent = storage.getProspects().length
+        ? "Aucun prospect actif pour le moment."
+        : "Aucun prospect enregistré pour le moment.";
       elements.list.append(empty);
       return;
     }
@@ -333,7 +422,6 @@ Audrey`,
     prospects.forEach((prospect) => {
       const status = prospect.statutProspect || "nouveau";
       const email = getProspectEmail(prospect);
-      const inactive = status === "transforme" || status === "archive";
       const card = document.createElement("article");
       card.className = "prospect-card";
       card.dataset.prospectId = prospect.id;
@@ -361,6 +449,7 @@ Audrey`,
         createFollowupPill(`Réponse : ${prospect.questionnaireRepondu ? "oui" : "non"}`, prospect.questionnaireRepondu ? "response-yes" : "response-no"),
       );
       if (!email) pills.append(createFollowupPill("Email manquant", "email-missing"));
+      if (prospect.relanceEnvoyee === true) pills.append(createFollowupPill(getRelancePillLabel(prospect), "relance-prepared"));
       main.append(identity, pills);
 
       const actions = document.createElement("div");
@@ -373,11 +462,12 @@ Audrey`,
         ));
       }
       actions.append(
-        createActionButton("Préparer brouillon questionnaire", "prepare-questionnaire-draft", "primary-action", !email || prospect.questionnaireEnvoye || inactive),
-        createActionButton("Copier message questionnaire", "copy-questionnaire-message", "secondary-action", inactive),
-        createActionButton("Marquer comme envoyé", "mark-questionnaire-sent", "secondary-action", prospect.questionnaireEnvoye || inactive),
-        createActionButton("Marquer comme répondu", "mark-answered", "secondary-action", prospect.questionnaireRepondu || inactive),
-        createActionButton("Transformer en étudiant", "convert", "primary-action", inactive),
+        createActionButton("Préparer brouillon questionnaire", "prepare-questionnaire-draft", "primary-action", !email || prospect.questionnaireEnvoye),
+        createActionButton("Copier message questionnaire", "copy-questionnaire-message", "secondary-action"),
+        createActionButton("Marquer comme envoyé", "mark-questionnaire-sent", "secondary-action", prospect.questionnaireEnvoye),
+        createActionButton("Préparer un mail de relance", "prepare-relance-draft", "secondary-action", !isProspectToRelance(prospect)),
+        createActionButton("Transformer en étudiant", "convert", "primary-action"),
+        createActionButton("Archiver", "archive", "secondary-action"),
       );
 
       card.append(main);
@@ -390,18 +480,94 @@ Audrey`,
     });
   }
 
+  function createArchivedProspectCard(prospect) {
+    const status = prospect.statutProspect || "archive";
+    const card = document.createElement("article");
+    card.className = "prospect-archive-card";
+    card.dataset.prospectId = prospect.id;
+
+    const content = document.createElement("div");
+    content.className = "prospect-archive-content";
+    const heading = document.createElement("div");
+    heading.className = "prospect-archive-heading";
+    const name = document.createElement("h3");
+    name.textContent = getProspectDisplayName(prospect);
+    const statusPill = createFollowupPill(status === "transforme" ? "Transformé" : "Archivé", `prospect-${status}`);
+    heading.append(name, statusPill);
+
+    const details = document.createElement("dl");
+    details.className = "prospect-archive-details";
+    appendIdentityDetail(details, "Email", getProspectEmail(prospect));
+    appendIdentityDetail(details, "Niveau", getProspectNiveau(prospect));
+    appendIdentityDetail(details, "Date de contact", prospect.dateContact ? formatDate(prospect.dateContact) : "");
+    appendIdentityDetail(details, "Date de modification", prospect.dateModification ? formatDate(prospect.dateModification) : "");
+
+    const linkedStudentId = prospect.studentId || prospect.convertedStudentId || "";
+    if (status === "transforme") {
+      const transformedNote = document.createElement("p");
+      transformedNote.className = "prospect-archive-note";
+      transformedNote.textContent = linkedStudentId
+        ? "Prospect transformé en étudiant. Étudiant créé."
+        : "Prospect transformé en étudiant.";
+      content.append(heading, details, transformedNote);
+    } else {
+      content.append(heading, details);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "prospect-archive-actions";
+    const restore = createActionButton(
+      status === "transforme" ? "Restaurer dans Prospects" : "Restaurer",
+      "restore-archive",
+      "secondary-action",
+    );
+    actions.append(restore);
+
+    if (linkedStudentId) {
+      const linkedStudent = document.createElement("a");
+      linkedStudent.className = "secondary-action";
+      linkedStudent.href = `index.html?student=${encodeURIComponent(linkedStudentId)}`;
+      linkedStudent.textContent = "Voir étudiant lié";
+      actions.append(linkedStudent);
+    }
+
+    actions.append(createActionButton("Supprimer définitivement", "delete-archive", "danger-action archive-delete-action"));
+    card.append(content, actions);
+    return card;
+  }
+
+  function renderProspectArchives() {
+    if (!elements.archivesSection || !elements.archivesList || !elements.archivesToggle) return;
+    const archivedProspects = getArchivedProspects();
+    elements.archivesSection.hidden = !archivesVisible;
+    elements.archivesToggle.textContent = archivesVisible ? "Masquer les prospects archivés" : "Voir les prospects archivés";
+    elements.archivesToggle.setAttribute("aria-expanded", String(archivesVisible));
+    elements.archivesList.textContent = "";
+
+    if (!archivedProspects.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "Aucun prospect archivé ou transformé pour le moment.";
+      elements.archivesList.append(empty);
+      return;
+    }
+
+    archivedProspects.forEach((prospect) => elements.archivesList.append(createArchivedProspectCard(prospect)));
+  }
+
   function renderCounts() {
-    const prospects = storage.getProspects();
-    const relances = prospects.filter(isProspectToRelance);
+    const prospects = getActiveProspects();
+    const relancePlan = getRelancePlan();
     elements.totalCount.textContent = String(prospects.length);
-    elements.relanceCount.textContent = `${relances.length} prospect(s) à relancer`;
-    elements.createRelances.disabled = relances.length === 0;
+    elements.relanceCount.textContent = `${relancePlan.eligible.length} prospect(s) à relancer`;
+    elements.createRelances.disabled = !prospects.some(isProspectAwaitingRelance);
     elements.prepareAll.disabled = !prospects.some(isQuestionnairePreparationCandidate);
   }
 
   function renderProspects() {
     renderCounts();
     renderProspectCards();
+    renderProspectArchives();
   }
 
   function markQuestionnaireSent(prospect, draftId = "") {
@@ -498,16 +664,34 @@ Audrey`,
     } else if (action === "mark-questionnaire-sent") {
       markQuestionnaireSent(prospect);
       setMessage(elements.actionStatus, "Questionnaire marqué comme envoyé.", "success");
-    } else if (action === "mark-answered") {
-      storage.updateProspect(prospect.id, {
-        statut: "intéressé",
-        statutProspect: "interesse",
-        questionnaireStatut: "repondu",
-        questionnaireEnvoye: true,
-        questionnaireRepondu: true,
-        questionnaireReponduLe: new Date().toISOString(),
-      });
-      setMessage(elements.actionStatus, "Réponse questionnaire enregistrée.", "success");
+    } else if (action === "prepare-relance-draft") {
+      button.disabled = true;
+      setMessage(elements.actionStatus, `Préparation du brouillon de relance pour ${getProspectDisplayName(prospect)}.`, "loading");
+      try {
+        const result = await createRelanceDraft(prospect);
+        markRelancePrepared(prospect, result.draftId);
+        setMessage(elements.actionStatus, "Brouillon de relance préparé. À vérifier et envoyer par Audrey.", "success");
+      } catch (error) {
+        setMessage(elements.actionStatus, `La préparation de la relance a échoué : ${error.message}`, "error");
+      }
+    } else if (action === "archive") {
+      storage.archiveProspect(prospect.id);
+      setMessage(elements.actionStatus, "Prospect archivé.", "success");
+    } else if (action === "restore-archive") {
+      storage.restoreProspect(prospect.id);
+      setMessage(elements.archivesStatus || elements.actionStatus, "Prospect restauré.", "success");
+    } else if (action === "delete-archive") {
+      const confirmed = window.confirm("Supprimer définitivement ce prospect ? Cette action est irréversible.");
+      if (!confirmed) return;
+      const hadLinkedStudent = Boolean(prospect.studentId || prospect.convertedStudentId);
+      storage.deleteProspect(prospect.id);
+      setMessage(
+        elements.archivesStatus || elements.actionStatus,
+        hadLinkedStudent
+          ? "Le prospect a été supprimé. L’étudiant lié est conservé."
+          : "Prospect supprimé définitivement.",
+        "success",
+      );
     } else if (action === "convert") {
       const parcours = normalizeProspectParcours(prospect.parcoursValide)
         || normalizeProspectParcours(getProspectParcoursPressenti(prospect));
@@ -690,6 +874,21 @@ Audrey`,
     return JSON.stringify(normalizeQuestionnaireResponse(current)) === JSON.stringify(response);
   }
 
+  function needsKnownResponseStatusRepair(prospect) {
+    return prospect.questionnaireRepondu !== true || prospect.questionnaireStatut !== "repondu";
+  }
+
+  function repairKnownResponseStatus(prospect, response) {
+    return storage.updateProspect(prospect.id, {
+      questionnaireRepondu: true,
+      questionnaireReponduLe: prospect.questionnaireReponduLe || response.receivedAt || new Date().toISOString(),
+      questionnaireStatut: "repondu",
+      statutProspect: prospect.statutProspect === "archive" || prospect.statutProspect === "transforme"
+        ? prospect.statutProspect
+        : "interesse",
+    });
+  }
+
   async function checkProspectResponses() {
     const endpoint = validateAppsScriptUrl(storage.getProspectsResponsesEndpoint());
     const token = storage.getProspectsResponsesToken().trim();
@@ -714,21 +913,31 @@ Audrey`,
       }
 
       const prospectsByEmail = new Map();
+      const prospectsByName = new Map();
       storage.getProspects().forEach((prospect) => {
         const email = normalizeEmail(getProspectEmail(prospect));
         if (email && !prospectsByEmail.has(email)) prospectsByEmail.set(email, prospect);
+        const nameKey = getProspectNameMatchKey(prospect);
+        if (nameKey && nameKey !== "prospect sans nom" && !prospectsByName.has(nameKey)) prospectsByName.set(nameKey, prospect);
       });
 
       let updated = 0;
       let known = 0;
       let unmatched = 0;
       keepLatestResponsesByEmail(data.responses).forEach((questionnaireResponse) => {
-        const prospect = prospectsByEmail.get(normalizeEmail(questionnaireResponse.email));
+        const prospect = prospectsByEmail.get(normalizeEmail(questionnaireResponse.email))
+          || prospectsByName.get(getResponseNameMatchKey(questionnaireResponse));
         if (!prospect) {
           unmatched += 1;
           return;
         }
-        if (isKnownResponse(prospect, questionnaireResponse)) {
+        const responseAlreadyKnown = isKnownResponse(prospect, questionnaireResponse);
+        if (responseAlreadyKnown && needsKnownResponseStatusRepair(prospect)) {
+          repairKnownResponseStatus(prospect, questionnaireResponse);
+          updated += 1;
+          return;
+        }
+        if (responseAlreadyKnown) {
           known += 1;
           return;
         }
@@ -818,78 +1027,143 @@ Audrey`,
     button.textContent = willOpen ? "Masquer l’édition" : "Éditer le mail";
   }
 
-  function buildRelancePayload(prospects, token) {
+  function buildRelanceMessage(prospect) {
     const template = getTemplates().relance;
     const formUrl = storage.getProspectsFormUrl();
     return {
-      action: "createRelanceDrafts",
-      token,
-      prospects: prospects.map((prospect) => ({
-        prospectId: prospect.id,
-        prenom: prospect.prenom || prospect.pseudo || "",
-        nom: prospect.nom || "",
-        email: getProspectEmail(prospect),
-        questionnaireUrl: formUrl,
-        subject: remplaceVariables(template.objet, prospect, formUrl),
-        message: remplaceVariables(template.corps, prospect, formUrl),
-      })),
+      objet: remplaceVariables(template.objet, prospect, formUrl),
+      corps: remplaceVariables(template.corps, prospect, formUrl),
     };
   }
 
-  function getRelanceDraftResults(data, prospects) {
-    const returned = Array.isArray(data.drafts) ? data.drafts : (Array.isArray(data.results) ? data.results : null);
-    if (!returned) return prospects.map((prospect) => ({ prospectId: prospect.id, draftId: prospects.length === 1 ? data.draftId || "" : "" }));
-    return returned.map((result, index) => ({
-      success: result.success,
-      prospectId: result.prospectId || result.id || prospects[index]?.id || "",
-      draftId: result.relanceDraftId || result.draftId || "",
-    })).filter((result) => result.success !== false);
+  function getRelanceConfiguration() {
+    const endpoint = validateAppsScriptUrl(
+      localStorage.getItem(RELANCE_ENDPOINT_KEY)
+      || storage.getProspectsMailEndpoint(),
+    );
+    const token = String(
+      localStorage.getItem(RELANCE_TOKEN_KEY)
+      || storage.getProspectsMailToken(),
+    ).trim();
+    const formUrl = validateHttpsUrl(storage.getProspectsFormUrl());
+    if (!formUrl) throw new Error("Enregistrez d’abord l’URL Google Forms prospects.");
+    if (!endpoint || !token) throw new Error("Connexion Apps Script de relance à configurer.");
+    return { endpoint, token };
+  }
+
+  async function createRelanceDraft(prospect) {
+    const email = getProspectEmail(prospect);
+    if (!email) throw new Error("L’email du prospect est manquant.");
+    if (prospect.questionnaireRepondu === true) throw new Error("Ce prospect a déjà répondu au questionnaire.");
+    if (!isProspectToRelance(prospect)) throw new Error("Ce prospect n’est pas encore éligible à une relance.");
+    const { endpoint, token } = getRelanceConfiguration();
+    const message = buildRelanceMessage(prospect);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8", Accept: "application/json" },
+      body: JSON.stringify({ token, email, objet: message.objet, corps: message.corps }),
+    });
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error("La réponse Apps Script n’est pas lisible.");
+    }
+    if (!response.ok || data.success !== true) throw new Error(data.error || data.message || "Le brouillon de relance n’a pas pu être préparé.");
+    return { draftId: data.draftId || "" };
+  }
+
+  function markRelancePrepared(prospect, draftId) {
+    const now = new Date().toISOString();
+    return storage.updateProspect(prospect.id, {
+      relanceEnvoyee: true,
+      relanceEnvoyeeLe: now,
+      relanceDraftId: draftId || "",
+      relanceCreatedAt: now,
+      lastRelanceAt: now,
+      relanceCount: (Number(prospect.relanceCount) || 0) + 1,
+      relanceStatus: "brouillon créé",
+      statut: "à relancer",
+      statutProspect: "a-relancer",
+    });
+  }
+
+  function hideRelanceConfirmation() {
+    pendingRelancePlan = null;
+    elements.relanceConfirmation.hidden = true;
+    elements.relanceConfirmationList.textContent = "";
+  }
+
+  function previewRelanceDrafts() {
+    const plan = getRelancePlan();
+    pendingRelancePlan = {
+      prospectIds: plan.eligible.map((prospect) => prospect.id),
+      ignoredEmail: plan.ignoredEmail,
+      ignoredDate: plan.ignoredDate,
+    };
+    elements.relanceConfirmationList.textContent = "";
+    plan.eligible.forEach((prospect) => {
+      const item = document.createElement("li");
+      item.textContent = `${getProspectDisplayName(prospect)} / ${getProspectEmail(prospect)}`;
+      elements.relanceConfirmationList.append(item);
+    });
+
+    if (!plan.eligible.length) {
+      hideRelanceConfirmation();
+      setMessage(
+        elements.relanceStatus,
+        `Aucun prospect ne peut être relancé pour le moment. ${plan.ignoredEmail} prospect(s) ignoré(s) car email manquant. ${plan.ignoredDate} prospect(s) ignoré(s) car date d’envoi absente.`,
+        "warning",
+      );
+      return;
+    }
+    elements.relanceConfirmationSummary.textContent = `${plan.eligible.length} prospects seront relancés :`;
+    elements.confirmRelances.textContent = `Préparer ${plan.eligible.length} brouillons de relance ?`;
+    elements.relanceConfirmation.hidden = false;
+    setMessage(elements.relanceStatus, "Vérifiez la liste avant de confirmer la préparation des brouillons.", "warning");
   }
 
   async function createRelanceDrafts() {
-    const prospects = storage.getProspects().filter(isProspectToRelance);
-    if (!prospects.length) return;
-    const endpoint = validateAppsScriptUrl(localStorage.getItem(RELANCE_ENDPOINT_KEY));
-    const token = (localStorage.getItem(RELANCE_TOKEN_KEY) || "").trim();
-    if (!endpoint || !token) {
-      setMessage(elements.relanceStatus, "Connexion Apps Script de relance à configurer.", "warning");
-      return;
-    }
-    if (!validateHttpsUrl(storage.getProspectsFormUrl())) {
-      setMessage(elements.relanceStatus, "Enregistrez d’abord l’URL Google Forms prospects.", "warning");
+    if (!pendingRelancePlan?.prospectIds.length) return;
+    const plan = pendingRelancePlan;
+    hideRelanceConfirmation();
+    try {
+      getRelanceConfiguration();
+    } catch (error) {
+      setMessage(elements.relanceStatus, error.message, "warning");
       return;
     }
 
     elements.createRelances.disabled = true;
-    setMessage(elements.relanceStatus, "Création des brouillons de relance en cours.", "loading");
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8", Accept: "application/json" },
-        body: JSON.stringify(buildRelancePayload(prospects, token)),
-      });
-      const data = await response.json();
-      if (!response.ok || data.success !== true) throw new Error(data.error || "Apps Script n’a pas confirmé la création des brouillons.");
-      const now = new Date().toISOString();
-      let created = 0;
-      getRelanceDraftResults(data, prospects).forEach((result) => {
-        const prospect = storage.getProspectById(result.prospectId);
-        if (!prospect || !isProspectToRelance(prospect)) return;
-        storage.updateProspect(prospect.id, {
-          relanceDraftId: result.draftId,
-          relanceCreatedAt: now,
-          lastRelanceAt: now,
-          relanceCount: (Number(prospect.relanceCount) || 0) + 1,
-          relanceStatus: "brouillon créé",
-          statut: "à relancer",
-          statutProspect: "a-relancer",
-        });
+    elements.confirmRelances.disabled = true;
+    let created = 0;
+    const errors = [];
+    const total = plan.prospectIds.length;
+    for (let index = 0; index < plan.prospectIds.length; index += 1) {
+      const prospect = storage.getProspectById(plan.prospectIds[index]);
+      if (!prospect || !isProspectToRelance(prospect)) {
+        errors.push("Prospect devenu inéligible avant la préparation");
+        continue;
+      }
+      try {
+        const result = await createRelanceDraft(prospect);
+        markRelancePrepared(prospect, result.draftId);
         created += 1;
-      });
-      setMessage(elements.relanceStatus, `${created} brouillon(s) de relance créé(s). À vérifier et envoyer par Audrey.`, "success");
-    } catch (error) {
-      setMessage(elements.relanceStatus, `La création des brouillons a échoué : ${error.message}`, "error");
+        setMessage(elements.relanceStatus, `Brouillon préparé pour ${getProspectDisplayName(prospect)} (${index + 1}/${total})`, "loading");
+      } catch (error) {
+        errors.push(`${getProspectDisplayName(prospect)} : ${error.message}`);
+      }
     }
+
+    const details = [
+      `${created} brouillon(s) de relance préparé(s) dans Gmail. À vérifier et envoyer par Audrey. Aucun envoi automatique n’a été effectué.`,
+      `${plan.ignoredEmail} prospect(s) ignoré(s) car email manquant.`,
+      `${plan.ignoredDate} prospect(s) ignoré(s) car date d’envoi absente.`,
+      `${errors.length} erreur(s).`,
+    ];
+    if (errors.length) details.push(`Détails : ${errors.join(" | ")}`);
+    setMessage(elements.relanceStatus, details.join(" "), errors.length ? "warning" : "success");
+    elements.confirmRelances.disabled = false;
     renderProspects();
   }
 
@@ -913,8 +1187,8 @@ Audrey`,
       storage.saveProspectsResponsesEndpoint(validateAppsScriptUrl(legacyResponsesEndpoint));
     }
     if (!storedResponsesToken && legacyResponsesToken.trim()) storage.saveProspectsResponsesToken(legacyResponsesToken.trim());
-    elements.relanceEndpoint.value = localStorage.getItem(RELANCE_ENDPOINT_KEY) || "";
-    elements.relanceToken.value = localStorage.getItem(RELANCE_TOKEN_KEY) || "";
+    elements.relanceEndpoint.value = localStorage.getItem(RELANCE_ENDPOINT_KEY) || storedMailEndpoint || "";
+    elements.relanceToken.value = localStorage.getItem(RELANCE_TOKEN_KEY) || storedMailToken || "";
     populateTemplateEditors();
   }
 
@@ -928,8 +1202,18 @@ Audrey`,
   });
   elements.createForm.addEventListener("submit", createProspect);
   elements.list.addEventListener("click", handleProspectAction);
+  elements.archivesList?.addEventListener("click", handleProspectAction);
+  elements.archivesToggle?.addEventListener("click", () => {
+    archivesVisible = !archivesVisible;
+    renderProspectArchives();
+  });
   elements.prepareAll.addEventListener("click", prepareAllQuestionnaireDrafts);
-  elements.createRelances.addEventListener("click", createRelanceDrafts);
+  elements.createRelances.addEventListener("click", previewRelanceDrafts);
+  elements.confirmRelances.addEventListener("click", createRelanceDrafts);
+  elements.cancelRelances.addEventListener("click", () => {
+    hideRelanceConfirmation();
+    setMessage(elements.relanceStatus, "Préparation des relances annulée.", "warning");
+  });
   elements.saveFormUrl.addEventListener("click", saveFormsUrl);
   elements.saveMailConnection.addEventListener("click", saveMailConnection);
   elements.saveResponsesConnection.addEventListener("click", saveResponsesConnection);
@@ -941,7 +1225,9 @@ Audrey`,
 
   global.ProspectRelances = Object.freeze({
     isProspectToRelance,
+    getRelancePlan,
     remplaceVariables,
-    buildRelancePayload,
+    buildRelanceMessage,
+    createRelanceDraft,
   });
 })(window);

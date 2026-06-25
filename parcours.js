@@ -7,9 +7,12 @@
   const parcours = container.dataset.parcoursStudents;
   const count = document.querySelector("[data-parcours-count]");
   const parcoursLabels = { "point-memoire": "Point Mémoire", k4: "K4", k5: "K5", rattrapage: "Rattrapage" };
-  const statusValues = ["nouveau", "questionnaire-envoye", "questionnaire-recu", "memoire-importe", "analyse-en-cours", "retour-envoye", "a-relancer", "termine", "archive"];
+  const statusValues = ["nouveau", "questionnaire-envoye", "questionnaire-recu", "memoire-importe", "analyse-en-cours", "retour-envoye", "a-relancer", "termine"];
   let termeRechercheParcours = "";
   let statutFiltreParcours = "tous";
+  let archivesVisible = false;
+  let archivesSection = null;
+  let archivesButton = null;
 
   function normalizeSearchValue(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
@@ -137,9 +140,124 @@
     return card;
   }
 
+  function formatDate(value) {
+    if (!value) return "À renseigner";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("fr-FR");
+  }
+
+  function createArchivedCard(student) {
+    const card = document.createElement("article");
+    card.className = "archive-student-card";
+    card.dataset.studentId = student.id;
+
+    const content = document.createElement("div");
+    const category = document.createElement("span");
+    category.className = "category-label";
+    category.textContent = parcoursLabels[student.parcours] || student.parcours || "Parcours";
+    const name = document.createElement("h3");
+    name.textContent = `${student.prenom || ""} ${student.nom || ""}`.trim() || "Étudiant sans nom";
+    const details = document.createElement("p");
+    details.className = "archive-student-details";
+    details.textContent = [
+      student.email || "Email à renseigner",
+      `Début : ${formatDate(student.dateDebut)}`,
+      `Archivé : ${formatDate(student.dateArchivage || student.dateModification)}`,
+    ].join(" · ");
+    content.append(category, name, details);
+
+    const actions = document.createElement("div");
+    actions.className = "archive-student-actions";
+    const restore = document.createElement("button");
+    restore.className = "secondary-action archive-restore-action";
+    restore.type = "button";
+    restore.textContent = "Restaurer";
+    restore.addEventListener("click", () => {
+      storage.restoreStudent(student.id);
+      render();
+      setArchiveStatus("Étudiant restauré.");
+    });
+
+    const remove = document.createElement("button");
+    remove.className = "danger-action archive-delete-action";
+    remove.type = "button";
+    remove.textContent = "Supprimer définitivement";
+    remove.addEventListener("click", () => {
+      const confirmed = window.confirm("Supprimer définitivement cet étudiant ? Cette action est irréversible.");
+      if (!confirmed) return;
+      storage.deleteStudent(student.id);
+      render();
+      setArchiveStatus("Étudiant supprimé définitivement.");
+    });
+
+    actions.append(restore, remove);
+    card.append(content, actions);
+    return card;
+  }
+
+  function setArchiveStatus(message) {
+    const status = archivesSection?.querySelector("[data-archive-status]");
+    if (!status) return;
+    status.textContent = message;
+    status.hidden = !message;
+  }
+
+  function ensureArchivesSection() {
+    if (archivesSection) return;
+    const parcoursWorkspace = container.closest(".workspace");
+    archivesSection = document.createElement("section");
+    archivesSection.className = "workspace archives-students-section";
+    archivesSection.hidden = true;
+    archivesSection.innerHTML = `
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Archives</p>
+          <h2>Étudiants archivés</h2>
+        </div>
+      </div>
+      <p class="sync-note">Les étudiants archivés restent consultables ici. La suppression définitive demande toujours confirmation.</p>
+      <p class="form-message archives-status" data-archive-status role="status" aria-live="polite" hidden></p>
+      <div class="archives-students-list" data-archive-list aria-live="polite"></div>
+    `;
+
+    archivesButton = document.createElement("button");
+    archivesButton.className = "secondary-action archives-toggle-action";
+    archivesButton.type = "button";
+    archivesButton.textContent = "Voir les étudiants archivés";
+    archivesButton.addEventListener("click", () => {
+      archivesVisible = !archivesVisible;
+      renderArchives();
+    });
+
+    const toggleWrap = document.createElement("div");
+    toggleWrap.className = "archives-toggle-wrap";
+    toggleWrap.append(archivesButton);
+    parcoursWorkspace.after(toggleWrap, archivesSection);
+  }
+
+  function renderArchives() {
+    ensureArchivesSection();
+    const archivedStudents = storage.getArchivedStudentsByParcours(parcours);
+    archivesSection.hidden = !archivesVisible;
+    archivesButton.textContent = archivesVisible ? "Masquer les étudiants archivés" : "Voir les étudiants archivés";
+
+    const list = archivesSection.querySelector("[data-archive-list]");
+    list.textContent = "";
+    if (archivedStudents.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "Aucun étudiant archivé dans ce parcours.";
+      list.append(empty);
+      return;
+    }
+
+    archivedStudents.forEach((student) => list.append(createArchivedCard(student)));
+  }
+
   function render() {
     const allStudents = storage.getStudentsByParcours(parcours);
-    count.textContent = String(allStudents.length);
+    if (count) count.textContent = String(allStudents.length);
     const searchTerm = normalizeSearchValue(termeRechercheParcours.trim());
     const students = allStudents.filter((student) => {
       const matchesSearch = !searchTerm || [student.prenom, student.nom, student.email]
@@ -158,9 +276,11 @@
     }
 
     window.dispatchEvent(new CustomEvent("redac:parcours-rendered", { detail: { parcours } }));
+    renderArchives();
   }
 
   createFilterBar();
+  ensureArchivesSection();
   render();
   window.addEventListener("redac:students-changed", render);
 })();

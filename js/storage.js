@@ -106,6 +106,9 @@
       relanceCount: Number(prospect?.relanceCount) || 0,
       lastRelanceAt: prospect?.lastRelanceAt || "",
       relanceStatus: prospect?.relanceStatus || "",
+      relanceEnvoyee: prospect?.relanceEnvoyee === true
+        || Boolean(prospect?.relanceDraftId || prospect?.relanceCreatedAt || prospect?.relanceStatus === "brouillon créé"),
+      relanceEnvoyeeLe: prospect?.relanceEnvoyeeLe || prospect?.relanceCreatedAt || prospect?.lastRelanceAt || "",
       dateCreation: prospect?.dateCreation || "",
       dateModification: prospect?.dateModification || "",
     };
@@ -123,6 +126,10 @@
       urgentManuel: student?.urgentManuel === true,
       niveau: student?.niveau || "",
     };
+  }
+
+  function isArchivedStudent(student) {
+    return student?.statut === "Archivé" || student?.statutSuivi === "archive";
   }
 
   function getStatutSuiviLabel(value) {
@@ -358,6 +365,8 @@
       relanceCount: prospectData.relanceCount,
       lastRelanceAt: prospectData.lastRelanceAt,
       relanceStatus: prospectData.relanceStatus,
+      relanceEnvoyee: prospectData.relanceEnvoyee === true,
+      relanceEnvoyeeLe: prospectData.relanceEnvoyeeLe || "",
       dateCreation: now,
       dateModification: now,
     });
@@ -368,6 +377,18 @@
 
   function getProspects() {
     return getDatabase().prospects;
+  }
+
+  function isArchivedProspect(prospect) {
+    return prospect?.statutProspect === "archive" || prospect?.statutProspect === "transforme";
+  }
+
+  function getActiveProspects() {
+    return getProspects().filter((prospect) => !isArchivedProspect(prospect));
+  }
+
+  function getArchivedProspects() {
+    return getProspects().filter(isArchivedProspect);
   }
 
   function getProspectById(id) {
@@ -387,6 +408,27 @@
     });
     saveDatabase(database);
     return database.prospects[index];
+  }
+
+  function archiveProspect(id) {
+    return updateProspect(id, { statutProspect: "archive", statut: "archivé" });
+  }
+
+  function restoreProspect(id) {
+    return updateProspect(id, { statutProspect: "nouveau", statut: "nouveau" });
+  }
+
+  function deleteProspect(id) {
+    const database = getDatabase();
+    const initialLength = database.prospects.length;
+    database.prospects = database.prospects.filter((prospect) => prospect.id !== id);
+
+    if (database.prospects.length === initialLength) {
+      return false;
+    }
+
+    saveDatabase(database);
+    return true;
   }
 
   function getFirstFilledValue(...values) {
@@ -409,11 +451,9 @@
     return "";
   }
 
-  function buildProspectConversionNotes(prospect, response) {
+  function buildProspectQuestionnaireNotes(prospect, response) {
     const valueOrFallback = (value) => String(value || "").trim() || "Non renseigné";
-    const summary = [
-      "Prospect converti depuis l’onglet Prospects.",
-      "",
+    return [
       `Niveau : ${valueOrFallback(prospect.niveau || response.niveau)}`,
       `IFMK : ${valueOrFallback(prospect.ifmk || response.ifmk)}`,
       `Téléphone : ${valueOrFallback(prospect.telephone || response.telephone)}`,
@@ -429,19 +469,108 @@
       "",
       "Question pour Audrey :",
       valueOrFallback(response.questionAudrey),
+    ].join("\n");
+  }
+
+  function buildProspectConversionNotes(prospect, response) {
+    const summary = [
+      "Prospect converti depuis l’onglet Prospects.",
+      "",
+      buildProspectQuestionnaireNotes(prospect, response),
     ];
     const firstContactNotes = [prospect.messageInitial, prospect.notes].filter((value) => String(value || "").trim());
     if (firstContactNotes.length) summary.push("", "Notes du premier contact :", firstContactNotes.join("\n\n"));
     return summary.join("\n");
   }
 
+  function hasProspectQuestionnaireInformation(response) {
+    return [
+      response.responseId,
+      response.receivedAt,
+      response.email,
+      response.telephone,
+      response.ifmk,
+      response.niveau,
+      response.annee,
+      response.avancementMemoire,
+      response.difficultePrincipale,
+      response.prochaineEcheance,
+      response.niveauBlocage,
+      response.niveauUrgence,
+      response.aideSouhaitee,
+      response.situationLibre,
+      response.questionAudrey,
+    ].some((value) => String(value || "").trim());
+  }
+
+  function appendProspectQuestionnaireNotes(existingNotes, prospect, response) {
+    const sectionTitle = "Informations issues du questionnaire prospect";
+    const notes = String(existingNotes || "").trim();
+    if (!hasProspectQuestionnaireInformation(response) || notes.includes(sectionTitle)) return notes;
+    return [notes, sectionTitle, buildProspectQuestionnaireNotes(prospect, response)].filter(Boolean).join("\n\n");
+  }
+
   function convertProspectToStudent(id, studentData = {}) {
     const prospect = getProspectById(id);
     if (!prospect) return null;
     const existingStudentId = prospect.studentId || prospect.convertedStudentId;
-    if (existingStudentId) return getStudentById(existingStudentId);
-
     const response = prospect.reponseQuestionnaireProspect || createEmptyProspectResponse();
+    if (existingStudentId) {
+      const existingStudent = getStudentById(existingStudentId);
+      if (existingStudent) {
+        const updatedStudent = updateStudent(existingStudentId, {
+          prenom: getFirstFilledValue(
+            existingStudent.prenom,
+            studentData.prenom,
+            prospect.prenom,
+            response.prenom,
+            extractProspectFirstName(response.nomComplet),
+            prospect.pseudo,
+          ),
+          nom: getFirstFilledValue(
+            existingStudent.nom,
+            studentData.nom,
+            prospect.nom,
+            response.nom,
+            extractProspectLastName(response.nomComplet),
+          ),
+          email: getFirstFilledValue(existingStudent.email, studentData.email, prospect.email, response.email),
+          telephone: getFirstFilledValue(existingStudent.telephone, studentData.telephone, prospect.telephone, response.telephone),
+          ifmk: getFirstFilledValue(existingStudent.ifmk, studentData.ifmk, prospect.ifmk, response.ifmk),
+          niveau: getFirstFilledValue(existingStudent.niveau, studentData.niveau, prospect.niveau, response.niveau, response.annee),
+          parcours: existingStudent.parcours
+            || normalizeStudentParcours(studentData.parcours)
+            || normalizeStudentParcours(prospect.parcoursValide)
+            || normalizeStudentParcours(prospect.parcoursPressenti)
+            || normalizeStudentParcours(prospect.parcoursVise),
+          thematiqueMemoire: getFirstFilledValue(
+            existingStudent.thematiqueMemoire,
+            studentData.thematiqueMemoire,
+            prospect.thematiqueMemoire,
+            response.situationLibre,
+            response.avancementMemoire,
+          ),
+          notesInitiales: appendProspectQuestionnaireNotes(
+            existingStudent.notesInitiales || studentData.notesInitiales,
+            prospect,
+            response,
+          ),
+          donneesParcours: {
+            ...(existingStudent.donneesParcours || {}),
+            ...(studentData.donneesParcours || {}),
+            questionnaireProspect: response,
+          },
+        });
+        updateProspect(id, {
+          statut: "converti en étudiant",
+          statutProspect: "transforme",
+          studentId: existingStudentId,
+          convertedStudentId: existingStudentId,
+        });
+        return updatedStudent;
+      }
+    }
+
     const parcours = normalizeStudentParcours(studentData.parcours)
       || normalizeStudentParcours(prospect.parcoursValide)
       || normalizeStudentParcours(prospect.parcoursPressenti)
@@ -535,19 +664,42 @@
   }
 
   function archiveStudent(id) {
-    return updateStudent(id, { statut: "Archivé", statutSuivi: "archive" });
+    const currentStudent = getStudentById(id);
+    return updateStudent(id, {
+      statut: "Archivé",
+      statutSuivi: "archive",
+      statutSuiviAvantArchive: currentStudent?.statutSuivi && currentStudent.statutSuivi !== "archive"
+        ? currentStudent.statutSuivi
+        : currentStudent?.statutSuiviAvantArchive || "nouveau",
+      dateArchivage: new Date().toISOString(),
+    });
+  }
+
+  function restoreStudent(id) {
+    const currentStudent = getStudentById(id);
+    const restoredStatus = currentStudent?.statutSuiviAvantArchive && currentStudent.statutSuiviAvantArchive !== "archive"
+      ? currentStudent.statutSuiviAvantArchive
+      : "nouveau";
+    return updateStudent(id, {
+      statut: "En cours",
+      statutSuivi: restoredStatus,
+    });
   }
 
   function getStudentsByParcours(parcours) {
-    return getDatabase().students.filter((student) => student.parcours === parcours);
+    return getDatabase().students.filter((student) => student.parcours === parcours && !isArchivedStudent(student));
   }
 
   function getActiveStudents() {
-    return getDatabase().students.filter((student) => student.statut !== "Archivé");
+    return getDatabase().students.filter((student) => !isArchivedStudent(student));
   }
 
   function getArchivedStudents() {
-    return getDatabase().students.filter((student) => student.statut === "Archivé");
+    return getDatabase().students.filter(isArchivedStudent);
+  }
+
+  function getArchivedStudentsByParcours(parcours) {
+    return getDatabase().students.filter((student) => student.parcours === parcours && isArchivedStudent(student));
   }
 
   global.RedacStorage = Object.freeze({
@@ -556,16 +708,23 @@
     createStudent,
     createProspect,
     getProspects,
+    getActiveProspects,
+    getArchivedProspects,
     getProspectById,
     updateProspect,
+    archiveProspect,
+    restoreProspect,
+    deleteProspect,
     convertProspectToStudent,
     getStudentById,
     updateStudent,
     deleteStudent,
     archiveStudent,
+    restoreStudent,
     getStudentsByParcours,
     getActiveStudents,
     getArchivedStudents,
+    getArchivedStudentsByParcours,
     getStatutSuiviLabel,
     getNiveauEcheance,
     isUrgent,
