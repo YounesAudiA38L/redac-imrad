@@ -8,11 +8,18 @@
   const count = document.querySelector("[data-parcours-count]");
   const parcoursLabels = { "point-memoire": "Point Mémoire", k4: "K4", k5: "K5", rattrapage: "Rattrapage" };
   const statusValues = ["nouveau", "questionnaire-envoye", "questionnaire-recu", "memoire-importe", "analyse-en-cours", "retour-envoye", "a-relancer", "termine"];
+  const parcoursTransferOptions = [
+    { value: "k4", label: "K4" },
+    { value: "k5", label: "K5" },
+    { value: "rattrapage", label: "Rattrapage" },
+  ];
   let termeRechercheParcours = "";
   let statutFiltreParcours = "tous";
   let archivesVisible = false;
   let archivesSection = null;
   let archivesButton = null;
+  let parcoursStatus = null;
+  let openTransferDropdown = null;
 
   function normalizeSearchValue(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
@@ -72,6 +79,33 @@
     list.append(row);
   }
 
+  function ensureParcoursStatus() {
+    if (parcoursStatus) return parcoursStatus;
+    parcoursStatus = document.createElement("p");
+    parcoursStatus.className = "form-message parcours-status-message";
+    parcoursStatus.setAttribute("role", "status");
+    parcoursStatus.setAttribute("aria-live", "polite");
+    parcoursStatus.hidden = true;
+    container.before(parcoursStatus);
+    return parcoursStatus;
+  }
+
+  function setParcoursStatus(message) {
+    const status = ensureParcoursStatus();
+    status.textContent = message;
+    status.hidden = !message;
+  }
+
+  function closeTransferDropdown() {
+    if (!openTransferDropdown) return;
+    const toggle = openTransferDropdown.querySelector(".parcours-transfer-toggle");
+    const menu = openTransferDropdown.querySelector(".parcours-transfer-menu");
+    openTransferDropdown.classList.remove("is-open");
+    if (toggle) toggle.setAttribute("aria-expanded", "false");
+    if (menu) menu.hidden = true;
+    openTransferDropdown = null;
+  }
+
   function createStatusBadges(student) {
     const badges = document.createElement("div");
     badges.className = "statut-pastilles";
@@ -100,6 +134,78 @@
     return badges;
   }
 
+  function changeStudentParcours(student, targetParcours) {
+    const targetLabel = parcoursLabels[targetParcours] || targetParcours;
+    const confirmed = window.confirm(`Confirmer le passage de cet étudiant vers ${targetLabel} ?`);
+    if (!confirmed) return;
+
+    const now = new Date().toISOString();
+    const donneesParcours = student.donneesParcours && typeof student.donneesParcours === "object"
+      ? student.donneesParcours
+      : {};
+
+    storage.updateStudent(student.id, {
+      parcours: targetParcours,
+      dateModification: now,
+      donneesParcours: {
+        ...donneesParcours,
+        transfertParcours: {
+          ...(donneesParcours.transfertParcours || {}),
+          depuis: "point-memoire",
+          vers: targetParcours,
+          date: now,
+        },
+      },
+    });
+    setParcoursStatus(`L’étudiant a été déplacé vers ${targetLabel}.`);
+    render();
+  }
+
+  function createParcoursTransferControl(student) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "parcours-transfer-control change-path-dropdown";
+
+    const toggle = document.createElement("button");
+    toggle.className = "secondary-action parcours-transfer-toggle dropdown-toggle";
+    toggle.type = "button";
+    toggle.textContent = "Changer de parcours ▼";
+    toggle.setAttribute("aria-expanded", "false");
+
+    const menu = document.createElement("div");
+    menu.className = "parcours-transfer-menu dropdown-menu";
+    menu.hidden = true;
+
+    parcoursTransferOptions.forEach((option) => {
+      const choice = document.createElement("button");
+      choice.type = "button";
+      choice.textContent = option.label;
+      choice.dataset.targetPath = option.value;
+      choice.addEventListener("click", () => {
+        closeTransferDropdown();
+        changeStudentParcours(student, option.value);
+      });
+      menu.append(choice);
+    });
+
+    toggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const shouldOpen = !wrapper.classList.contains("is-open");
+      closeTransferDropdown();
+      if (!shouldOpen) return;
+      wrapper.classList.add("is-open");
+      menu.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+      openTransferDropdown = wrapper;
+    });
+
+    wrapper.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    wrapper.append(toggle, menu);
+    return wrapper;
+  }
+
   function createCard(student) {
     const card = document.createElement("article");
     card.className = "student-card";
@@ -124,6 +230,10 @@
     const archive = document.createElement("button"); archive.className = "secondary-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver"; archive.disabled = student.statut === "Archivé";
     archive.addEventListener("click", () => { storage.archiveStudent(student.id); render(); });
     actions.append(open, edit, archive);
+
+    if (student.parcours === "point-memoire" && student.statut !== "Archivé" && student.statutSuivi !== "archive") {
+      actions.append(createParcoursTransferControl(student));
+    }
 
     if (student.parcours === "k4") {
       card.classList.add("student-card-k4");
@@ -283,4 +393,8 @@
   ensureArchivesSection();
   render();
   window.addEventListener("redac:students-changed", render);
+  document.addEventListener("click", closeTransferDropdown);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeTransferDropdown();
+  });
 })();

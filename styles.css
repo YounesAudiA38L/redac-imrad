@@ -1,6 +1,21 @@
+/* === PALETTE OFFICIELLE RÉDAC-IMRAD === */
 :root {
   color-scheme: light;
-  --color-background: #f3f0e8;
+  --app-bg-default: #f6f0e8;
+  --tab-accueil-bg-soft: #edf4ef;
+  --tab-prospects-bg-soft: #eef5ef;
+  --tab-point-memoire-bg-soft: #f7efe0;
+  --tab-k4-bg-soft: #f8e9df;
+  --tab-k5-bg-soft: #eaf1f8;
+  --tab-rattrapage-bg-soft: #f1eaf5;
+  --tab-accueil-accent: #55735f;
+  --tab-prospects-accent: #7fa58b;
+  --tab-point-memoire-accent: #c9a65d;
+  --tab-k4-accent: #c97855;
+  --tab-k5-accent: #5f8fb8;
+  --tab-rattrapage-accent: #8a6a9e;
+  --app-page-bg: var(--app-bg-default);
+  --color-background: var(--app-page-bg);
   --bg: var(--color-background);
   --surface: #ffffff;
   --surface-muted: #eef2ed;
@@ -11,6 +26,42 @@
   --accent-strong: #134e45;
   --caution: #9a6b15;
   --shadow: 0 16px 40px rgba(29, 37, 34, 0.08);
+  --color-accueil: var(--tab-accueil-accent);
+  --color-accueil-soft: var(--tab-accueil-bg-soft);
+  --color-prospects: var(--tab-prospects-accent);
+  --color-prospects-soft: var(--tab-prospects-bg-soft);
+  --color-point-memoire: var(--tab-point-memoire-accent);
+  --color-point-memoire-soft: var(--tab-point-memoire-bg-soft);
+  --color-k4: var(--tab-k4-accent);
+  --color-k4-soft: var(--tab-k4-bg-soft);
+  --color-k5: var(--tab-k5-accent);
+  --color-k5-soft: var(--tab-k5-bg-soft);
+  --color-rattrapage: var(--tab-rattrapage-accent);
+  --color-rattrapage-soft: var(--tab-rattrapage-bg-soft);
+}
+
+body.tab-accueil {
+  --app-page-bg: var(--tab-accueil-bg-soft);
+}
+
+body.tab-prospects {
+  --app-page-bg: var(--tab-prospects-bg-soft);
+}
+
+body.tab-point-memoire {
+  --app-page-bg: var(--tab-point-memoire-bg-soft);
+}
+
+body.tab-k4 {
+  --app-page-bg: var(--tab-k4-bg-soft);
+}
+
+body.tab-k5 {
+  --app-page-bg: var(--tab-k5-bg-soft);
+}
+
+body.tab-rattrapage {
+  --app-page-bg: var(--tab-rattrapage-bg-soft);
 }
 
 * {
@@ -2775,18 +2826,18 @@ p {
 
 /* === IDENTITÉ VISUELLE GLOBALE === */
 :root {
-  --color-accueil: #245f53;
-  --color-accueil-soft: #e5efeb;
-  --color-prospects: #6f8f7c;
-  --color-prospects-soft: #eaf1ed;
-  --color-point-memoire: #b3915d;
-  --color-point-memoire-soft: #f4ead8;
-  --color-k4: #b8664d;
-  --color-k4-soft: #f5e3dd;
-  --color-k5: #6487a6;
-  --color-k5-soft: #e4edf4;
-  --color-rattrapage: #7d5b78;
-  --color-rattrapage-soft: #eee5ec;
+  --color-accueil: var(--tab-accueil-accent);
+  --color-accueil-soft: var(--tab-accueil-bg-soft);
+  --color-prospects: var(--tab-prospects-accent);
+  --color-prospects-soft: var(--tab-prospects-bg-soft);
+  --color-point-memoire: var(--tab-point-memoire-accent);
+  --color-point-memoire-soft: var(--tab-point-memoire-bg-soft);
+  --color-k4: var(--tab-k4-accent);
+  --color-k4-soft: var(--tab-k4-bg-soft);
+  --color-k5: var(--tab-k5-accent);
+  --color-k5-soft: var(--tab-k5-bg-soft);
+  --color-rattrapage: var(--tab-rattrapage-accent);
+  --color-rattrapage-soft: var(--tab-rattrapage-bg-soft);
 }
 
 .main-tabs {
@@ -3789,4 +3840,128 @@ input[type="file"]::file-selector-button {
   .point-synthese-block dl > div {
     gap: 3px;
   }
+}
+
+/* === NAVIGATION STICKY + TRANSFERT POINT MÉMOIRE === */
+body,
+.app-shell,
+.page-container {
+  background: var(--app-page-bg);
+}
+
+[data-main-nav] {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  background: var(--app-page-bg);
+}
+
+.main-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  background: var(--app-page-bg);
+}
+
+.main-tabs-inner {
+  background: var(--app-page-bg);
+}
+
+.parcours-status-message {
+  margin: 0 0 16px;
+}
+
+.parcours-transfer-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.parcours-transfer-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: none;
+  min-width: 190px;
+  padding: 8px;
+  border: 1px solid #dfd1b8;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 14px 32px rgba(29, 37, 34, 0.12);
+  z-index: 10000;
+}
+
+.parcours-transfer-menu[hidden] {
+  display: none;
+}
+
+.parcours-transfer-control.is-open .parcours-transfer-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.parcours-transfer-menu button {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 750;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.parcours-transfer-menu button:hover,
+.parcours-transfer-menu button:focus-visible {
+  background: var(--color-point-memoire-soft);
+  color: #735f3e;
+}
+
+@media (max-width: 640px) {
+  .parcours-transfer-control,
+  .parcours-transfer-toggle {
+    width: 100%;
+  }
+
+  .parcours-transfer-menu {
+    right: auto;
+    left: 0;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* === FOND PAR ONGLET ACTIF === */
+body,
+.app-shell,
+.main-content,
+.page-container,
+[data-main-nav],
+.main-tabs,
+.main-tabs-inner {
+  background: var(--app-page-bg);
+}
+
+.main-tab.active {
+  border-color: var(--nav-color);
+  background: var(--nav-soft);
+  color: var(--nav-color);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--nav-color) 18%, transparent);
+}
+
+.main-tab.active:hover,
+.main-tab.active:focus-visible {
+  background: color-mix(in srgb, var(--nav-soft) 82%, #ffffff);
+  color: var(--nav-color);
+}
+
+.card,
+.student-card,
+.prospect-card,
+.panel {
+  background-color: var(--surface);
 }

@@ -10,9 +10,13 @@
 
   const pageName = window.location.pathname.split("/").pop() || "index.html";
   const activeFromPage = items.find((item) => item.href === pageName)?.id || "accueil";
+  const tabClassNames = items.map((item) => `tab-${item.id}`);
 
   document.querySelectorAll("[data-main-nav]").forEach((mount) => {
     const active = mount.dataset.active || activeFromPage;
+    document.body.classList.remove(...tabClassNames);
+    document.body.classList.add(`tab-${active}`);
+
     const nav = document.createElement("nav");
     nav.className = "main-tabs";
     nav.setAttribute("aria-label", "Navigation principale");
