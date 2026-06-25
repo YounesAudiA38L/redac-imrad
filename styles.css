@@ -463,6 +463,17 @@ p {
   margin: 0;
 }
 
+.prospect-response-block {
+  display: grid;
+  gap: 10px;
+}
+
+.prospect-response-block h5 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
 .prospect-response-item {
   min-width: 0;
   padding: 12px;

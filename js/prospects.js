@@ -65,7 +65,7 @@ Audrey`,
     relanceToken: document.querySelector("#prospect-relance-token"),
     saveRelanceConnection: document.querySelector("#save-prospect-relance-config"),
     relanceConnectionStatus: document.querySelector("#prospect-relance-config-status"),
-    createRelances: document.querySelector("#create-prospect-relance-drafts"),
+    createRelances: document.querySelector("#send-prospect-relances"),
     relanceStatus: document.querySelector("#prospect-relance-status"),
     relanceCount: document.querySelector("#prospect-relance-count"),
     relanceConfirmation: document.querySelector("#prospect-relance-confirmation"),
@@ -196,6 +196,34 @@ Audrey`,
     return Boolean(response.responseId || response.receivedAt || response.email);
   }
 
+  function hasUsefulResponseData(response) {
+    if (!response || typeof response !== "object") return false;
+    return Object.entries(response).some(([key, value]) => {
+      if (key === "rawResponse") return value && typeof value === "object" && Object.keys(value).length > 0;
+      return value !== "" && value !== null && value !== undefined && value !== false;
+    });
+  }
+
+  function collectProspectResponses(prospect) {
+    const responses = [];
+    const primaryResponse = getProspectResponse(prospect);
+    if (hasUsefulResponseData(primaryResponse)) responses.push(primaryResponse);
+    if (Array.isArray(prospect.reponsesBrutes)) {
+      prospect.reponsesBrutes.forEach((response) => {
+        if (hasUsefulResponseData(response)) responses.push(response);
+      });
+    }
+    if (Array.isArray(prospect.conflitsReponsesProspect)) {
+      prospect.conflitsReponsesProspect.forEach((response) => {
+        if (hasUsefulResponseData(response)) responses.push(response);
+      });
+    }
+    if (prospect.rawResponse && typeof prospect.rawResponse === "object" && hasUsefulResponseData(prospect.rawResponse)) {
+      responses.push({ rawResponse: prospect.rawResponse });
+    }
+    return responses.sort((first, second) => getResponseTimestamp(first) - getResponseTimestamp(second));
+  }
+
   function isQuestionnairePreparationCandidate(prospect) {
     const status = prospect.statutProspect || "nouveau";
     return (prospect.questionnaireStatut === "a-envoyer" || prospect.questionnaireEnvoye !== true)
@@ -301,9 +329,9 @@ Audrey`,
   }
 
   function getRelancePillLabel(prospect) {
-    if (!prospect.relanceEnvoyeeLe) return "Relance préparée";
+    if (!prospect.relanceEnvoyeeLe) return "Relance envoyée";
     const date = new Date(prospect.relanceEnvoyeeLe);
-    return Number.isNaN(date.getTime()) ? "Relance préparée" : `Relance préparée le ${date.toLocaleDateString("fr-FR")}`;
+    return Number.isNaN(date.getTime()) ? "Relance envoyée" : `Relance envoyée le ${date.toLocaleDateString("fr-FR")}`;
   }
 
   function appendIdentityDetail(container, label, value) {
@@ -369,40 +397,163 @@ Audrey`,
     container.append(item);
   }
 
+  function hasDisplayValue(value) {
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  }
+
+  function normalizeQuestionKey(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[’‘]/g, "'")
+      .replace(/\s+/g, " ");
+  }
+
+  function getRawResponseValue(rawResponse, rawKeys = []) {
+    if (!rawResponse || typeof rawResponse !== "object") return "";
+    const rawEntries = Object.entries(rawResponse).map(([key, value]) => [normalizeQuestionKey(key), value]);
+    const normalizedRawKeys = rawKeys.map(normalizeQuestionKey);
+    const match = rawEntries.find(([key, value]) => normalizedRawKeys.includes(key) && hasDisplayValue(value));
+    return match ? match[1] : "";
+  }
+
+  function getResponseValue(response, directKeys = [], rawKeys = []) {
+    const directKey = directKeys.find((key) => hasDisplayValue(response?.[key]));
+    if (directKey) return response[directKey];
+    return getRawResponseValue(response?.rawResponse, rawKeys);
+  }
+
+  function splitFullName(value) {
+    const parts = String(value || "").trim().split(/\s+/).filter(Boolean);
+    return {
+      prenom: parts[0] || "",
+      nom: parts.slice(1).join(" "),
+    };
+  }
+
+  function getResponseFirstName(response) {
+    return getResponseValue(response, ["prenom", "firstName"], ["prenom", "prénom"])
+      || splitFullName(getRawResponseValue(response?.rawResponse, ["prenom et nom", "prénom et nom"])).prenom;
+  }
+
+  function getResponseLastName(response) {
+    return getResponseValue(response, ["nom", "lastName"], ["nom"])
+      || splitFullName(getRawResponseValue(response?.rawResponse, ["prenom et nom", "prénom et nom"])).nom;
+  }
+
+  function inferParcoursFromResponse(response) {
+    const directValue = getResponseValue(response, ["parcoursVise", "parcoursPressenti"], []);
+    if (hasDisplayValue(directValue)) return directValue;
+    const accompagnement = String(getResponseValue(
+      response,
+      ["accompagnementSouhaite", "accompagnementRecherche", "aideSouhaitee"],
+      [
+        "quel type d'accompagnement penses-tu rechercher ?",
+        "quel type d’accompagnement penses-tu rechercher ?",
+        "type d'accompagnement",
+        "accompagnement",
+      ],
+    ) || "").toLocaleLowerCase("fr-FR");
+    if (accompagnement.includes("point")) return "Point Mémoire";
+    if (accompagnement.includes("k4")) return "K4";
+    if (accompagnement.includes("k5")) return "K5";
+    if (accompagnement.includes("rattrapage")) return "Rattrapage";
+    return "";
+  }
+
+  function formatResponseDate(value) {
+    if (!hasDisplayValue(value)) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).replace(",", " à");
+  }
+
+  function createQuestionnaireResponseDetails(response) {
+    const fields = document.createElement("dl");
+    fields.className = "prospect-response-grid";
+    appendResponseField(fields, "Prénom", getResponseFirstName(response));
+    appendResponseField(fields, "Nom", getResponseLastName(response));
+    appendResponseField(fields, "Email", getResponseValue(response, ["email"], ["adresse mail", "email", "adresse e-mail"]));
+    appendResponseField(fields, "Année / niveau d’étude", getResponseValue(
+      response,
+      ["anneeEtudeLibelle", "anneeEtude", "niveau", "annee"],
+      ["en quelle annee es-tu ?", "en quelle année es-tu ?", "année", "annee", "niveau"],
+    ));
+    appendResponseField(fields, "Situation dans le mémoire", getResponseValue(
+      response,
+      ["situationMemoire", "situationLibre", "avancementMemoire"],
+      ["ou en es-tu dans ton memoire ?", "où en es-tu dans ton mémoire ?", "situation memoire", "situation mémoire", "avancement"],
+    ), { wide: true });
+    appendResponseField(fields, "Prochaine échéance", getResponseValue(
+      response,
+      ["echeance", "prochaineEcheance"],
+      ["quelle est ta prochaine echeance ?", "quelle est ta prochaine échéance ?", "echeance", "échéance"],
+    ));
+    appendResponseField(fields, "Blocage principal", getResponseValue(
+      response,
+      ["blocagePrincipal", "difficultePrincipale", "niveauBlocage"],
+      ["qu'est-ce qui te bloque le plus aujourd'hui ?", "qu’est-ce qui te bloque le plus aujourd’hui ?", "blocage principal", "blocage"],
+    ), { wide: true });
+    appendResponseField(fields, "Accompagnement recherché", getResponseValue(
+      response,
+      ["accompagnementSouhaite", "accompagnementRecherche", "aideSouhaitee"],
+      ["quel type d'accompagnement penses-tu rechercher ?", "quel type d’accompagnement penses-tu rechercher ?", "type d'accompagnement", "accompagnement"],
+    ), { wide: true });
+    appendResponseField(fields, "Parcours visé", inferParcoursFromResponse(response));
+    appendResponseField(fields, "Provenance", getResponseValue(
+      response,
+      ["provenanceLibelle", "provenance"],
+      ["comment as-tu connu audrey / sois fiere de ton memoire ?", "comment as-tu connu audrey / sois fière de ton mémoire ?", "provenance", "source"],
+    ));
+    appendResponseField(fields, "Niveau de stress", getResponseValue(
+      response,
+      ["niveauStress", "niveauUrgence"],
+      ["sur une echelle de 0 a 10, a quel point te sens-tu stresse(e) par ton memoire ?", "sur une échelle de 0 à 10, à quel point te sens-tu stressé(e) par ton mémoire ?", "stress", "niveau stress"],
+    ));
+    appendResponseField(fields, "Date de réponse", formatResponseDate(getResponseValue(response, ["receivedAt", "timestamp"], ["timestamp", "horodateur"])));
+    return fields;
+  }
+
   function createQuestionnaireResponsePanel(prospect) {
-    const response = getProspectResponse(prospect);
+    const responses = collectProspectResponses(prospect);
     const panel = document.createElement("section");
     panel.className = "prospect-response-panel";
-    panel.setAttribute("aria-label", `Réponse questionnaire de ${getProspectDisplayName(prospect)}`);
+    panel.setAttribute("aria-label", `Réponses questionnaire de ${getProspectDisplayName(prospect)}`);
     const heading = document.createElement("div");
     heading.className = "prospect-response-heading";
     const title = document.createElement("h4");
-    title.textContent = "Réponse au questionnaire prospect";
-    const date = document.createElement("p");
-    const receivedDate = response.receivedAt ? new Date(response.receivedAt) : null;
-    date.textContent = receivedDate && !Number.isNaN(receivedDate.getTime())
-      ? `Reçue le ${receivedDate.toLocaleString("fr-FR")}`
-      : "Date de réponse non renseignée";
-    heading.append(title, date);
+    title.textContent = "Réponses questionnaire";
+    const count = document.createElement("p");
+    count.textContent = responses.length ? `${responses.length} réponse(s) liée(s)` : "Aucune réponse liée";
+    heading.append(title, count);
+    panel.append(heading);
 
-    const fields = document.createElement("dl");
-    fields.className = "prospect-response-grid";
-    appendResponseField(fields, "IFMK", response.ifmk);
-    appendResponseField(fields, "Niveau", response.niveau);
-    appendResponseField(fields, "Téléphone", response.telephone);
-    appendResponseField(fields, "Avancement mémoire", response.avancementMemoire, { wide: true });
-    appendResponseField(fields, "Difficulté principale", response.difficultePrincipale, { wide: true });
-    appendResponseField(fields, "Prochaine échéance", response.prochaineEcheance);
-    appendResponseField(fields, "Niveau de blocage", response.niveauBlocage);
-    appendResponseField(fields, "Urgence", response.niveauUrgence);
-    appendResponseField(fields, "Aide souhaitée", response.aideSouhaitee, { wide: true });
-    appendResponseField(fields, "Situation libre", response.situationLibre, { wide: true });
-    appendResponseField(fields, "Question pour Audrey", response.questionAudrey, { wide: true });
-    appendResponseField(fields, "Cadre accepté", response.cadreAccepte ? "Oui" : "Non");
-    appendResponseField(fields, "Mémoire non rédigé à sa place", response.redactionNonRemplacee ? "Oui" : "Non");
+    if (!responses.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "Aucune réponse questionnaire liée à ce prospect pour le moment.";
+      panel.append(empty);
+    } else {
+      responses.forEach((response, index) => {
+        const responseBlock = document.createElement("article");
+        responseBlock.className = "prospect-response-block";
+        const responseTitle = document.createElement("h5");
+        responseTitle.textContent = responses.length > 1 ? `Réponse ${index + 1}` : "Réponse liée";
+        responseBlock.append(responseTitle, createQuestionnaireResponseDetails(response));
+        panel.append(responseBlock);
+      });
+    }
 
     const hideButton = createActionButton("Masquer la réponse", "toggle-response", "secondary-action");
-    panel.append(heading, fields, hideButton);
+    panel.append(hideButton);
     return panel;
   }
 
@@ -454,24 +605,20 @@ Audrey`,
 
       const actions = document.createElement("div");
       actions.className = "prospect-actions";
-      if (hasQuestionnaireResponse(prospect)) {
-        actions.append(createActionButton(
-          expandedResponseProspectIds.has(prospect.id) ? "Masquer la réponse" : "Voir réponse",
-          "toggle-response",
-          "secondary-action",
-        ));
-      }
+      actions.append(createActionButton(
+        expandedResponseProspectIds.has(prospect.id) ? "Masquer les réponses" : "Voir réponses",
+        "toggle-response",
+        "secondary-action",
+      ));
       actions.append(
-        createActionButton("Préparer brouillon questionnaire", "prepare-questionnaire-draft", "primary-action", !email || prospect.questionnaireEnvoye),
-        createActionButton("Copier message questionnaire", "copy-questionnaire-message", "secondary-action"),
-        createActionButton("Marquer comme envoyé", "mark-questionnaire-sent", "secondary-action", prospect.questionnaireEnvoye),
-        createActionButton("Préparer un mail de relance", "prepare-relance-draft", "secondary-action", !isProspectToRelance(prospect)),
+        createActionButton("Envoyer questionnaire", "send-questionnaire", "primary-action", !email || prospect.questionnaireRepondu === true),
+        createActionButton("Envoyer relance", "send-relance", "secondary-action", !isProspectToRelance(prospect)),
         createActionButton("Transformer en étudiant", "convert", "primary-action"),
         createActionButton("Archiver", "archive", "secondary-action"),
       );
 
       card.append(main);
-      if (expandedResponseProspectIds.has(prospect.id) && hasQuestionnaireResponse(prospect)) {
+      if (expandedResponseProspectIds.has(prospect.id)) {
         card.append(createQuestionnaireResponsePanel(prospect));
       }
       if (convertingProspectId === prospect.id) card.append(createConversionChoice(prospect));
@@ -570,21 +717,20 @@ Audrey`,
     renderProspectArchives();
   }
 
-  function markQuestionnaireSent(prospect, draftId = "") {
+  function markQuestionnaireSent(prospect) {
     return storage.updateProspect(prospect.id, {
       email: prospect.email || getProspectEmail(prospect),
       statut: "à relancer",
-      statutProspect: "a-relancer",
+      statutProspect: prospect.statutProspect === "nouveau" ? "a-relancer" : prospect.statutProspect,
       questionnaireStatut: "envoye",
       questionnaireEnvoye: true,
       questionnaireEnvoyeLe: new Date().toISOString(),
       questionnaireRepondu: false,
       questionnaireReponduLe: "",
-      questionnaireDraftId: draftId,
     });
   }
 
-  function getQuestionnaireDraftConfiguration() {
+  function getQuestionnaireSendConfiguration() {
     const formUrl = validateHttpsUrl(storage.getProspectsFormUrl());
     const endpoint = validateAppsScriptUrl(storage.getProspectsMailEndpoint());
     const token = storage.getProspectsMailToken().trim();
@@ -593,15 +739,11 @@ Audrey`,
     return { formUrl, endpoint, token };
   }
 
-  async function createQuestionnaireDraft(prospect) {
-    const email = getProspectEmail(prospect);
-    if (!email) throw new Error("L’email du prospect est manquant.");
-    const { endpoint, token } = getQuestionnaireDraftConfiguration();
-    const message = buildQuestionnaireMessage(prospect);
+  async function sendProspectMail(endpoint, token, action, email, message) {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8", Accept: "application/json" },
-      body: JSON.stringify({ token, email, objet: message.objet, corps: message.corps }),
+      body: JSON.stringify({ token, action, email, objet: message.objet, corps: message.corps }),
     });
     let data;
     try {
@@ -609,28 +751,18 @@ Audrey`,
     } catch {
       throw new Error("La réponse Apps Script n’est pas lisible.");
     }
-    if (!response.ok || data.success !== true) throw new Error(data.error || data.message || "Le brouillon n’a pas pu être préparé.");
-    return { draftId: data.draftId || "", message: data.message || "" };
+    if (!response.ok || data.success !== true) {
+      throw new Error(data.error || data.message || "L’envoi n’a pas pu être confirmé.");
+    }
+    return data;
   }
 
-  async function copyQuestionnaireMessage(prospect) {
-    if (!validateHttpsUrl(storage.getProspectsFormUrl())) throw new Error("Enregistrez d’abord l’URL Google Forms prospects.");
+  async function sendQuestionnaire(prospect) {
+    const email = getProspectEmail(prospect);
+    if (!email) throw new Error("L’email du prospect est manquant.");
+    const { endpoint, token } = getQuestionnaireSendConfiguration();
     const message = buildQuestionnaireMessage(prospect);
-    const text = `Objet : ${message.objet}\n\nCorps :\n${message.corps}`;
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-    const temporaryField = document.createElement("textarea");
-    temporaryField.value = text;
-    temporaryField.setAttribute("readonly", "");
-    temporaryField.style.position = "fixed";
-    temporaryField.style.opacity = "0";
-    document.body.append(temporaryField);
-    temporaryField.select();
-    const copied = document.execCommand("copy");
-    temporaryField.remove();
-    if (!copied) throw new Error("La copie n’est pas autorisée par le navigateur.");
+    return sendProspectMail(endpoint, token, "sendQuestionnaire", email, message);
   }
 
   async function handleProspectAction(event) {
@@ -644,35 +776,27 @@ Audrey`,
     if (action === "toggle-response") {
       if (expandedResponseProspectIds.has(prospect.id)) expandedResponseProspectIds.delete(prospect.id);
       else expandedResponseProspectIds.add(prospect.id);
-    } else if (action === "prepare-questionnaire-draft") {
+    } else if (action === "send-questionnaire") {
       button.disabled = true;
-      setMessage(elements.actionStatus, "Préparation du brouillon questionnaire en cours.", "loading");
+      setMessage(elements.actionStatus, "Envoi du questionnaire en cours.", "loading");
       try {
-        const result = await createQuestionnaireDraft(prospect);
-        markQuestionnaireSent(prospect, result.draftId);
-        setMessage(elements.actionStatus, "Brouillon questionnaire préparé. À vérifier et envoyer par Audrey.", "success");
+        await sendQuestionnaire(prospect);
+        markQuestionnaireSent(prospect);
+        setMessage(elements.actionStatus, `Questionnaire envoyé à ${getProspectEmail(prospect)}.`, "success");
       } catch (error) {
-        setMessage(elements.actionStatus, `La préparation du brouillon a échoué : ${error.message}`, "error");
+        setMessage(elements.actionStatus, `L’envoi du questionnaire a échoué : ${error.message}`, "error");
       }
-    } else if (action === "copy-questionnaire-message") {
-      try {
-        await copyQuestionnaireMessage(prospect);
-        setMessage(elements.actionStatus, "Message copié. Colle-le dans ton mail, vérifie et envoie.", "success");
-      } catch (error) {
-        setMessage(elements.actionStatus, `La copie du message a échoué : ${error.message}`, "error");
-      }
-    } else if (action === "mark-questionnaire-sent") {
-      markQuestionnaireSent(prospect);
-      setMessage(elements.actionStatus, "Questionnaire marqué comme envoyé.", "success");
-    } else if (action === "prepare-relance-draft") {
+    } else if (action === "send-relance") {
+      const email = getProspectEmail(prospect);
+      if (!global.confirm(`Envoyer une relance à ${email} ?`)) return;
       button.disabled = true;
-      setMessage(elements.actionStatus, `Préparation du brouillon de relance pour ${getProspectDisplayName(prospect)}.`, "loading");
+      setMessage(elements.actionStatus, `Envoi de la relance à ${email}.`, "loading");
       try {
-        const result = await createRelanceDraft(prospect);
-        markRelancePrepared(prospect, result.draftId);
-        setMessage(elements.actionStatus, "Brouillon de relance préparé. À vérifier et envoyer par Audrey.", "success");
+        await sendRelance(prospect);
+        markRelanceSent(prospect);
+        setMessage(elements.actionStatus, `Relance envoyée à ${email}.`, "success");
       } catch (error) {
-        setMessage(elements.actionStatus, `La préparation de la relance a échoué : ${error.message}`, "error");
+        setMessage(elements.actionStatus, `L’envoi de la relance a échoué : ${error.message}`, "error");
       }
     } else if (action === "archive") {
       storage.archiveProspect(prospect.id);
@@ -718,36 +842,37 @@ Audrey`,
     renderProspects();
   }
 
-  async function prepareAllQuestionnaireDrafts() {
+  async function sendAllQuestionnaires() {
     const candidates = storage.getProspects().filter(isQuestionnairePreparationCandidate);
     const eligible = candidates.filter((prospect) => Boolean(getProspectEmail(prospect)));
     const ignored = candidates.length - eligible.length;
     if (!eligible.length) {
-      setMessage(elements.bulkStatus, `0 brouillon(s) préparé(s). ${ignored} prospect(s) ignoré(s) car email manquant. 0 erreur(s). À vérifier et envoyer par Audrey.`, "warning");
+      setMessage(elements.bulkStatus, `0 questionnaire(s) envoyé(s). ${ignored} prospect(s) ignoré(s) car email manquant. 0 erreur(s).`, "warning");
       return;
     }
     try {
-      getQuestionnaireDraftConfiguration();
+      getQuestionnaireSendConfiguration();
     } catch (error) {
       setMessage(elements.bulkStatus, error.message, "error");
       return;
     }
+    if (!global.confirm(`Vous allez envoyer ${eligible.length} questionnaire(s). Confirmer l’envoi ?`)) return;
 
     elements.prepareAll.disabled = true;
-    setMessage(elements.bulkStatus, "Préparation des brouillons questionnaire en cours.", "loading");
-    let created = 0;
+    setMessage(elements.bulkStatus, "Envoi des questionnaires en cours.", "loading");
+    let sent = 0;
     let errors = 0;
     for (const prospect of eligible) {
       try {
-        const result = await createQuestionnaireDraft(prospect);
-        markQuestionnaireSent(prospect, result.draftId);
-        created += 1;
+        await sendQuestionnaire(prospect);
+        markQuestionnaireSent(prospect);
+        sent += 1;
       } catch {
         errors += 1;
       }
     }
     const type = errors ? "warning" : "success";
-    setMessage(elements.bulkStatus, `${created} brouillon(s) préparé(s). ${ignored} prospect(s) ignoré(s) car email manquant. ${errors} erreur(s). À vérifier et envoyer par Audrey.`, type);
+    setMessage(elements.bulkStatus, `${sent} questionnaire(s) envoyé(s). ${ignored} prospect(s) ignoré(s) car email manquant. ${errors} erreur(s).`, type);
     renderProspects();
   }
 
@@ -1051,38 +1176,25 @@ Audrey`,
     return { endpoint, token };
   }
 
-  async function createRelanceDraft(prospect) {
+  async function sendRelance(prospect) {
     const email = getProspectEmail(prospect);
     if (!email) throw new Error("L’email du prospect est manquant.");
+    if (prospect.questionnaireEnvoye !== true) throw new Error("Le questionnaire n’a pas encore été envoyé à ce prospect.");
     if (prospect.questionnaireRepondu === true) throw new Error("Ce prospect a déjà répondu au questionnaire.");
     if (!isProspectToRelance(prospect)) throw new Error("Ce prospect n’est pas encore éligible à une relance.");
     const { endpoint, token } = getRelanceConfiguration();
     const message = buildRelanceMessage(prospect);
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8", Accept: "application/json" },
-      body: JSON.stringify({ token, email, objet: message.objet, corps: message.corps }),
-    });
-    let data;
-    try {
-      data = await response.json();
-    } catch {
-      throw new Error("La réponse Apps Script n’est pas lisible.");
-    }
-    if (!response.ok || data.success !== true) throw new Error(data.error || data.message || "Le brouillon de relance n’a pas pu être préparé.");
-    return { draftId: data.draftId || "" };
+    return sendProspectMail(endpoint, token, "sendRelance", email, message);
   }
 
-  function markRelancePrepared(prospect, draftId) {
+  function markRelanceSent(prospect) {
     const now = new Date().toISOString();
     return storage.updateProspect(prospect.id, {
       relanceEnvoyee: true,
       relanceEnvoyeeLe: now,
-      relanceDraftId: draftId || "",
-      relanceCreatedAt: now,
       lastRelanceAt: now,
       relanceCount: (Number(prospect.relanceCount) || 0) + 1,
-      relanceStatus: "brouillon créé",
+      relanceStatus: "envoyée",
       statut: "à relancer",
       statutProspect: "a-relancer",
     });
@@ -1094,7 +1206,7 @@ Audrey`,
     elements.relanceConfirmationList.textContent = "";
   }
 
-  function previewRelanceDrafts() {
+  function previewRelanceSend() {
     const plan = getRelancePlan();
     pendingRelancePlan = {
       prospectIds: plan.eligible.map((prospect) => prospect.id),
@@ -1117,13 +1229,13 @@ Audrey`,
       );
       return;
     }
-    elements.relanceConfirmationSummary.textContent = `${plan.eligible.length} prospects seront relancés :`;
-    elements.confirmRelances.textContent = `Préparer ${plan.eligible.length} brouillons de relance ?`;
+    elements.relanceConfirmationSummary.textContent = `Vous allez envoyer ${plan.eligible.length} relance(s) :`;
+    elements.confirmRelances.textContent = `Envoyer ${plan.eligible.length} relance(s) ?`;
     elements.relanceConfirmation.hidden = false;
-    setMessage(elements.relanceStatus, "Vérifiez la liste avant de confirmer la préparation des brouillons.", "warning");
+    setMessage(elements.relanceStatus, "Vérifiez la liste avant de confirmer l’envoi des relances.", "warning");
   }
 
-  async function createRelanceDrafts() {
+  async function sendRelances() {
     if (!pendingRelancePlan?.prospectIds.length) return;
     const plan = pendingRelancePlan;
     hideRelanceConfirmation();
@@ -1136,27 +1248,27 @@ Audrey`,
 
     elements.createRelances.disabled = true;
     elements.confirmRelances.disabled = true;
-    let created = 0;
+    let sent = 0;
     const errors = [];
     const total = plan.prospectIds.length;
     for (let index = 0; index < plan.prospectIds.length; index += 1) {
       const prospect = storage.getProspectById(plan.prospectIds[index]);
       if (!prospect || !isProspectToRelance(prospect)) {
-        errors.push("Prospect devenu inéligible avant la préparation");
+        errors.push("Prospect devenu inéligible avant l’envoi");
         continue;
       }
       try {
-        const result = await createRelanceDraft(prospect);
-        markRelancePrepared(prospect, result.draftId);
-        created += 1;
-        setMessage(elements.relanceStatus, `Brouillon préparé pour ${getProspectDisplayName(prospect)} (${index + 1}/${total})`, "loading");
+        await sendRelance(prospect);
+        markRelanceSent(prospect);
+        sent += 1;
+        setMessage(elements.relanceStatus, `Relance envoyée à ${getProspectEmail(prospect)} (${index + 1}/${total})`, "loading");
       } catch (error) {
         errors.push(`${getProspectDisplayName(prospect)} : ${error.message}`);
       }
     }
 
     const details = [
-      `${created} brouillon(s) de relance préparé(s) dans Gmail. À vérifier et envoyer par Audrey. Aucun envoi automatique n’a été effectué.`,
+      `${sent} relance(s) envoyée(s).`,
       `${plan.ignoredEmail} prospect(s) ignoré(s) car email manquant.`,
       `${plan.ignoredDate} prospect(s) ignoré(s) car date d’envoi absente.`,
       `${errors.length} erreur(s).`,
@@ -1207,12 +1319,12 @@ Audrey`,
     archivesVisible = !archivesVisible;
     renderProspectArchives();
   });
-  elements.prepareAll.addEventListener("click", prepareAllQuestionnaireDrafts);
-  elements.createRelances.addEventListener("click", previewRelanceDrafts);
-  elements.confirmRelances.addEventListener("click", createRelanceDrafts);
+  elements.prepareAll.addEventListener("click", sendAllQuestionnaires);
+  elements.createRelances.addEventListener("click", previewRelanceSend);
+  elements.confirmRelances.addEventListener("click", sendRelances);
   elements.cancelRelances.addEventListener("click", () => {
     hideRelanceConfirmation();
-    setMessage(elements.relanceStatus, "Préparation des relances annulée.", "warning");
+    setMessage(elements.relanceStatus, "Envoi des relances annulé.", "warning");
   });
   elements.saveFormUrl.addEventListener("click", saveFormsUrl);
   elements.saveMailConnection.addEventListener("click", saveMailConnection);
@@ -1228,6 +1340,6 @@ Audrey`,
     getRelancePlan,
     remplaceVariables,
     buildRelanceMessage,
-    createRelanceDraft,
+    sendRelance,
   });
 })(window);
