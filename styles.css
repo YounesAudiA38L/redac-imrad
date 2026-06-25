@@ -3655,3 +3655,33 @@ input[type="file"]::file-selector-button {
     justify-content: center;
   }
 }
+
+/* === SAUVEGARDE CONFIGURATION ACCUEIL === */
+.config-backup-section {
+  background: #fffdf8;
+}
+
+.config-backup-warning {
+  max-width: 860px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #dfc68f;
+  border-radius: 16px;
+  background: #f6e8c8;
+  color: #73521c;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.config-backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .config-backup-actions {
+    display: grid;
+  }
+}

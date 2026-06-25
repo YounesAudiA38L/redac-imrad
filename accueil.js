@@ -50,6 +50,10 @@ const questionnaireStatsInputs = {
   k5: document.querySelector("#stats-link-k5"),
   rattrapage: document.querySelector("#stats-link-rattrapage"),
 };
+const exportPrivateConfigButton = document.querySelector("#export-private-config");
+const importPrivateConfigButton = document.querySelector("#import-private-config");
+const privateConfigFileInput = document.querySelector("#private-config-file");
+const privateConfigMessage = document.querySelector("#private-config-message");
 
 let currentFilter = "tous";
 let currentStatusFilter = "tous";
@@ -83,6 +87,29 @@ const CALENDAR_TOKEN_KEY = "redacImrad.calendar.token";
 const K4_RESPONSES_ENDPOINT_KEY = "redacImrad.k4Questionnaire.responsesUrl";
 const K4_RESPONSES_TOKEN_KEY = "redacImrad.k4Questionnaire.responsesToken";
 const POINT_MEMOIRE_RESPONSES_ENDPOINT_KEY = "redacImrad.questionnaires.endpoint";
+const CONFIG_EXPORT_LOCAL_STORAGE_KEYS = [
+  "redacImrad.calendar.endpoint",
+  "redacImrad.calendar.token",
+  "redacImrad.pointMemoireResume.endpoint",
+  "redacImrad.pointMemoireResume.token",
+  "redacImrad.questionnaires.endpoint",
+  "redacImrad.k4Questionnaire.formUrl",
+  "redacImrad.k4Questionnaire.sendUrl",
+  "redacImrad.k4Questionnaire.sendToken",
+  "redacImrad.k4Questionnaire.responsesUrl",
+  "redacImrad.k4Questionnaire.responsesToken",
+  "redacImrad.k4Deliverables.endpoint",
+  "redacImrad.prospects.questionnaireSend.endpoint",
+  "redacImrad.prospects.questionnaireSend.token",
+  "redacImrad.prospects.questionnaireResponses.endpoint",
+  "redacImrad.prospects.questionnaireResponses.token",
+  "redacImrad.prospects.relanceEndpoint",
+  "redacImrad.prospects.relanceToken",
+  "redacImrad.k5Questionnaire.responsesUrl",
+  "redacImrad.k5Questionnaire.responsesToken",
+  "redacImrad.rattrapageQuestionnaire.responsesUrl",
+  "redacImrad.rattrapageQuestionnaire.responsesToken",
+];
 const questionnaireStatsDefinitions = [
   { id: "prospects", label: "Prospects" },
   { id: "pointMemoire", label: "Point Mémoire" },
@@ -798,6 +825,151 @@ async function renderQuestionnaireStats() {
   refreshQuestionnaireStatsButton.disabled = false;
 }
 
+function setPrivateConfigMessage(message, state = "") {
+  privateConfigMessage.textContent = message;
+  privateConfigMessage.dataset.state = state;
+  privateConfigMessage.hidden = !message;
+}
+
+function getWhitelistedLocalStorageConfig() {
+  return Object.fromEntries(CONFIG_EXPORT_LOCAL_STORAGE_KEYS.map((key) => [key, localStorage.getItem(key) || ""]));
+}
+
+function buildPrivateConfigExport() {
+  const database = storage.getDatabase();
+  return {
+    exportType: "redac-imrad-private-config",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    settings: {
+      databaseSettings: database.settings || {},
+      localStorage: getWhitelistedLocalStorageConfig(),
+      effectiveSettings: storage.getEffectiveSettings?.() || {},
+    },
+  };
+}
+
+function getExportDateStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function exportPrivateConfiguration() {
+  const payload = buildPrivateConfigExport();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `CONFIG_PRIVEE_REDAC_IMRAD_${getExportDateStamp()}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+  setPrivateConfigMessage("Configuration exportée. À conserver uniquement dans le Google Drive privé d’Audrey.", "success");
+}
+
+function normalizeImportedSettings(settings) {
+  if (!settings || typeof settings !== "object") return {};
+  if (settings.databaseSettings || settings.localStorage || settings.effectiveSettings) return settings;
+  return { databaseSettings: settings };
+}
+
+function applyEffectiveSettingsToLocalConfig(effectiveSettings) {
+  if (!effectiveSettings || typeof effectiveSettings !== "object") return;
+  const agenda = effectiveSettings.agenda || {};
+  const prospects = effectiveSettings.prospects || {};
+  const pointMemoire = effectiveSettings.pointMemoire || {};
+  const k4 = effectiveSettings.k4 || {};
+  const k5 = effectiveSettings.k5 || {};
+  const rattrapage = effectiveSettings.rattrapage || {};
+
+  const database = storage.getDatabase();
+  database.settings = {
+    ...(database.settings || {}),
+    googleAgendaEmbedUrl: agenda.iframeUrl || database.settings?.googleAgendaEmbedUrl || "",
+    formsStatsLinks: {
+      ...(database.settings?.formsStatsLinks || {}),
+      prospects: prospects.formsStatsUrl || "",
+      pointMemoire: pointMemoire.formsStatsUrl || "",
+      k4: k4.formsStatsUrl || "",
+      k5: k5.formsStatsUrl || "",
+      rattrapage: rattrapage.formsStatsUrl || "",
+    },
+    prospects: {
+      ...(database.settings?.prospects || {}),
+      formUrl: prospects.formsPublicUrl || "",
+      responsesEndpoint: prospects.responsesAppsScriptUrl || "",
+      responsesToken: prospects.tokenResponses || "",
+      mailEndpoint: prospects.mailsAppsScriptUrl || "",
+      mailToken: prospects.tokenMails || "",
+    },
+  };
+  storage.saveDatabase(database);
+
+  const values = {
+    "redacImrad.calendar.endpoint": agenda.appsScriptUrl || "",
+    "redacImrad.calendar.token": agenda.token || "",
+    "redacImrad.pointMemoireResume.endpoint": pointMemoire.appsScriptUrl || "",
+    "redacImrad.pointMemoireResume.token": pointMemoire.token || "",
+    "redacImrad.k4Questionnaire.responsesUrl": k4.responsesAppsScriptUrl || "",
+    "redacImrad.k4Questionnaire.responsesToken": k4.token || "",
+    "redacImrad.k5Questionnaire.responsesUrl": k5.responsesAppsScriptUrl || "",
+    "redacImrad.k5Questionnaire.responsesToken": k5.token || "",
+    "redacImrad.rattrapageQuestionnaire.responsesUrl": rattrapage.responsesAppsScriptUrl || "",
+    "redacImrad.rattrapageQuestionnaire.responsesToken": rattrapage.token || "",
+  };
+  Object.entries(values).forEach(([key, value]) => {
+    if (value) localStorage.setItem(key, value);
+  });
+}
+
+function applyImportedConfiguration(payload) {
+  const imported = normalizeImportedSettings(payload.settings);
+  const database = storage.getDatabase();
+  database.settings = imported.databaseSettings && typeof imported.databaseSettings === "object"
+    ? imported.databaseSettings
+    : {};
+  storage.saveDatabase(database);
+
+  if (imported.localStorage && typeof imported.localStorage === "object") {
+    CONFIG_EXPORT_LOCAL_STORAGE_KEYS.forEach((key) => {
+      const value = String(imported.localStorage[key] || "").trim();
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    });
+  }
+
+  applyEffectiveSettingsToLocalConfig(imported.effectiveSettings);
+}
+
+function refreshConfigurationInterface() {
+  initializeGoogleAgenda();
+  initializeCalendarConnection();
+  initializeQuestionnaireStatsLinks();
+  renderQuestionnaireStats();
+}
+
+async function importPrivateConfigurationFile(file) {
+  if (!file) return;
+  let payload;
+  try {
+    payload = JSON.parse(await file.text());
+  } catch {
+    setPrivateConfigMessage("Impossible de lire ce fichier.", "error");
+    return;
+  }
+
+  if (!payload || payload.exportType !== "redac-imrad-private-config" || !payload.settings) {
+    setPrivateConfigMessage("Fichier de configuration invalide.", "error");
+    return;
+  }
+
+  if (!window.confirm("Importer cette configuration ? Les paramètres actuels seront remplacés.")) return;
+
+  applyImportedConfiguration(payload);
+  refreshConfigurationInterface();
+  setPrivateConfigMessage("Configuration importée avec succès.", "success");
+  privateConfigFileInput.value = "";
+}
+
 function parseCalendarEndpoint(rawValue) {
   try {
     const parsedUrl = new URL(String(rawValue || "").trim());
@@ -845,14 +1017,6 @@ async function addGoogleAppointment(event) {
   const student = contactType === "student" ? storage.getStudentById(contactId) : null;
   const prospect = contactType === "prospect" ? storage.getProspectById(contactId) : null;
   const contact = prospect || student;
-
-  console.log("Données formulaire Agenda", {
-    date,
-    heureDebut,
-    typeRdv,
-    dureeMinutes,
-    notes,
-  });
 
   if (!date) {
     setAppointmentMessage("Merci de renseigner la date du rendez-vous.", "error");
@@ -932,8 +1096,6 @@ async function addGoogleAppointment(event) {
     timezone: "Europe/Paris",
     details,
   };
-
-  console.log("Payload Agenda envoyé", payload);
 
   const url =
     agendaScriptUrl +
@@ -1033,6 +1195,9 @@ saveCalendarConnectionButton.addEventListener("click", saveCalendarConnection);
 appointmentForm.addEventListener("submit", addGoogleAppointment);
 saveQuestionnaireStatsLinksButton.addEventListener("click", saveQuestionnaireStatsLinks);
 refreshQuestionnaireStatsButton.addEventListener("click", renderQuestionnaireStats);
+exportPrivateConfigButton.addEventListener("click", exportPrivateConfiguration);
+importPrivateConfigButton.addEventListener("click", () => privateConfigFileInput.click());
+privateConfigFileInput.addEventListener("change", () => importPrivateConfigurationFile(privateConfigFileInput.files?.[0]));
 
 quickProspectForm.addEventListener("submit", (event) => {
   event.preventDefault();

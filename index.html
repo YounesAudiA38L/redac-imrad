@@ -181,12 +181,25 @@
         <p id="questionnaire-stats-message" class="form-message" role="status" aria-live="polite" hidden></p>
         <div id="questionnaire-stats-list" class="questionnaire-stats-list" aria-live="polite"></div>
       </section>
+
+      <section class="workspace config-backup-section" aria-labelledby="config-backup-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Paramètres privés</p><h2 id="config-backup-title">Sauvegarde de la configuration</h2></div>
+        </div>
+        <p class="config-backup-warning">Ce fichier peut contenir des liens privés et des tokens Apps Script. Ne pas le publier sur GitHub. À conserver uniquement dans le Google Drive privé d’Audrey.</p>
+        <div class="config-backup-actions">
+          <button class="primary-action" type="button" id="export-private-config">Exporter la configuration</button>
+          <button class="secondary-action" type="button" id="import-private-config">Importer une configuration</button>
+          <input id="private-config-file" type="file" accept=".json,application/json" hidden />
+        </div>
+        <p id="private-config-message" class="form-message" role="status" aria-live="polite" hidden></p>
+      </section>
     </main>
     <script src="config.private.js"></script>
     <script src="navigation.js?v=9" defer></script>
     <script src="js/storage.js?v=25" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
     <script src="js/livrables-k4.js?v=12" defer></script>
-    <script src="accueil.js?v=23" defer></script>
+    <script src="accueil.js?v=24" defer></script>
   </body>
 </html>

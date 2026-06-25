@@ -225,11 +225,8 @@
     setLoading(true, "Génération de la fiche résumé et création du brouillon mail en cours.");
 
     try {
-      console.log("URL Apps Script appelée", url);
       const response = await fetch(url);
-      console.log("Réponse Apps Script brute", response);
       const data = await response.json();
-      console.log("Réponse Apps Script JSON", data);
 
       if (data.success === false) {
         renderResult(resume, data.error || "Le script Apps Script a signalé une erreur.");
