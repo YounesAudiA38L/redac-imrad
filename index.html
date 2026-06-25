@@ -162,11 +162,31 @@
           <div class="form-actions"><button class="primary-action" type="submit">Ajouter le prospect</button></div><p id="quick-prospect-message" class="form-message" role="status" aria-live="polite" hidden></p>
         </form>
       </details>
+
+      <section class="workspace home-statistics-section" aria-labelledby="questionnaire-stats-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Questionnaires</p><h2 id="questionnaire-stats-title">Statistiques questionnaires</h2></div>
+          <button class="secondary-action compact-action" type="button" id="refresh-questionnaire-stats">Actualiser les statistiques</button>
+        </div>
+        <div class="questionnaire-stats-config">
+          <label class="field"><span>Lien statistiques Prospects</span><input id="stats-link-prospects" type="url" inputmode="url" placeholder="https://docs.google.com/forms/d/.../edit#responses" /></label>
+          <label class="field"><span>Lien statistiques Point Mémoire</span><input id="stats-link-point-memoire" type="url" inputmode="url" placeholder="https://docs.google.com/forms/d/.../edit#responses" /></label>
+          <label class="field"><span>Lien statistiques K4</span><input id="stats-link-k4" type="url" inputmode="url" placeholder="https://docs.google.com/forms/d/.../edit#responses" /></label>
+          <label class="field"><span>Lien statistiques K5</span><input id="stats-link-k5" type="url" inputmode="url" placeholder="https://docs.google.com/forms/d/.../edit#responses" /></label>
+          <label class="field"><span>Lien statistiques Rattrapage</span><input id="stats-link-rattrapage" type="url" inputmode="url" placeholder="https://docs.google.com/forms/d/.../edit#responses" /></label>
+        </div>
+        <div class="form-actions questionnaire-stats-actions">
+          <button class="primary-action" type="button" id="save-questionnaire-stats-links">Enregistrer les liens</button>
+        </div>
+        <p id="questionnaire-stats-message" class="form-message" role="status" aria-live="polite" hidden></p>
+        <div id="questionnaire-stats-list" class="questionnaire-stats-list" aria-live="polite"></div>
+      </section>
     </main>
+    <script src="config.private.js"></script>
     <script src="navigation.js?v=9" defer></script>
-    <script src="js/storage.js?v=20" defer></script>
+    <script src="js/storage.js?v=25" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
     <script src="js/livrables-k4.js?v=12" defer></script>
-    <script src="accueil.js?v=21" defer></script>
+    <script src="accueil.js?v=23" defer></script>
   </body>
 </html>

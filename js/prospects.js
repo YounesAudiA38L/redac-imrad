@@ -87,7 +87,8 @@ Audrey`,
     nouveau: "Nouveau",
     "a-relancer": "À relancer",
     interesse: "Intéressé",
-    "non-interesse": "Non intéressé",
+    "non-interesse": "Pas intéressé",
+    "en-reflexion": "En réflexion",
     transforme: "Transformé",
     archive: "Archivé",
   };
@@ -294,9 +295,16 @@ Audrey`,
 
   function getTemplates() {
     const stored = storage.getProspectsMailTemplates();
+    const normalizeTemplate = (type) => {
+      const template = stored[type] || {};
+      return {
+        objet: template.objet || template.subject || DEFAULT_TEMPLATES[type].objet,
+        corps: template.corps || template.body || DEFAULT_TEMPLATES[type].corps,
+      };
+    };
     return {
-      questionnaire: { ...DEFAULT_TEMPLATES.questionnaire, ...(stored.questionnaire || {}) },
-      relance: { ...DEFAULT_TEMPLATES.relance, ...(stored.relance || {}) },
+      questionnaire: normalizeTemplate("questionnaire"),
+      relance: normalizeTemplate("relance"),
     };
   }
 
@@ -411,6 +419,16 @@ Audrey`,
       .replace(/\s+/g, " ");
   }
 
+  function normalizeInterestValue(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[’‘]/g, "'")
+      .replace(/\s+/g, " ");
+  }
+
   function getRawResponseValue(rawResponse, rawKeys = []) {
     if (!rawResponse || typeof rawResponse !== "object") return "";
     const rawEntries = Object.entries(rawResponse).map(([key, value]) => [normalizeQuestionKey(key), value]);
@@ -423,6 +441,45 @@ Audrey`,
     const directKey = directKeys.find((key) => hasDisplayValue(response?.[key]));
     if (directKey) return response[directKey];
     return getRawResponseValue(response?.rawResponse, rawKeys);
+  }
+
+  function getProspectInterestStatusFromResponse(response) {
+    const value = normalizeInterestValue(getResponseValue(
+      response,
+      ["accompagnementSouhaite", "accompagnementRecherche", "typeAccompagnement", "aideSouhaitee"],
+      [
+        "quel type d'accompagnement penses-tu rechercher ?",
+        "quel type d’accompagnement penses-tu rechercher ?",
+        "accompagnement",
+        "type d'accompagnement",
+      ],
+    ));
+    if (!value) return "";
+    if (value.includes("pas interesse")) return "non-interesse";
+    if (value.includes("je ne sais pas encore")) return "en-reflexion";
+    return "interesse";
+  }
+
+  function getProspectStatusAfterResponse(prospect, response) {
+    const currentStatus = prospect.statutProspect || "nouveau";
+    if (currentStatus === "archive" || currentStatus === "transforme") return currentStatus;
+    return getProspectInterestStatusFromResponse(response)
+      || getProspectInterestStatusFromResponse(getProspectResponse(prospect))
+      || currentStatus;
+  }
+
+  function getLegacyProspectStatusLabel(status) {
+    if (status === "interesse") return "intéressé";
+    if (status === "non-interesse") return "pas intéressé";
+    if (status === "en-reflexion") return "en réflexion";
+    return status || "nouveau";
+  }
+
+  function getProspectStatusAfterRestore(prospect) {
+    const responseStatus = getProspectInterestStatusFromResponse(getProspectResponse(prospect));
+    if (responseStatus) return responseStatus;
+    if (prospect.questionnaireEnvoye === true || prospect.questionnaireStatut === "envoye") return "a-relancer";
+    return "nouveau";
   }
 
   function splitFullName(value) {
@@ -663,6 +720,13 @@ Audrey`,
 
     const actions = document.createElement("div");
     actions.className = "prospect-archive-actions";
+    if (hasQuestionnaireResponse(prospect)) {
+      actions.append(createActionButton(
+        expandedResponseProspectIds.has(prospect.id) ? "Masquer les réponses" : "Voir réponses",
+        "toggle-response",
+        "secondary-action",
+      ));
+    }
     const restore = createActionButton(
       status === "transforme" ? "Restaurer dans Prospects" : "Restaurer",
       "restore-archive",
@@ -680,6 +744,9 @@ Audrey`,
 
     actions.append(createActionButton("Supprimer définitivement", "delete-archive", "danger-action archive-delete-action"));
     card.append(content, actions);
+    if (expandedResponseProspectIds.has(prospect.id)) {
+      card.append(createQuestionnaireResponsePanel(prospect));
+    }
     return card;
   }
 
@@ -802,7 +869,11 @@ Audrey`,
       storage.archiveProspect(prospect.id);
       setMessage(elements.actionStatus, "Prospect archivé.", "success");
     } else if (action === "restore-archive") {
-      storage.restoreProspect(prospect.id);
+      const statutProspect = getProspectStatusAfterRestore(prospect);
+      storage.updateProspect(prospect.id, {
+        statutProspect,
+        statut: getLegacyProspectStatusLabel(statutProspect),
+      });
       setMessage(elements.archivesStatus || elements.actionStatus, "Prospect restauré.", "success");
     } else if (action === "delete-archive") {
       const confirmed = window.confirm("Supprimer définitivement ce prospect ? Cette action est irréversible.");
@@ -964,6 +1035,9 @@ Audrey`,
       niveauBlocage: String(value.niveauBlocage || ""),
       niveauUrgence: String(value.niveauUrgence || ""),
       aideSouhaitee: String(value.aideSouhaitee || ""),
+      accompagnementSouhaite: String(value.accompagnementSouhaite || ""),
+      accompagnementRecherche: String(value.accompagnementRecherche || ""),
+      typeAccompagnement: String(value.typeAccompagnement || ""),
       situationLibre: String(value.situationLibre || ""),
       questionAudrey: String(value.questionAudrey || ""),
       cadreAccepte: normalizeBoolean(value.cadreAccepte),
@@ -999,18 +1073,20 @@ Audrey`,
     return JSON.stringify(normalizeQuestionnaireResponse(current)) === JSON.stringify(response);
   }
 
-  function needsKnownResponseStatusRepair(prospect) {
-    return prospect.questionnaireRepondu !== true || prospect.questionnaireStatut !== "repondu";
+  function needsKnownResponseStatusRepair(prospect, response) {
+    return prospect.questionnaireRepondu !== true
+      || prospect.questionnaireStatut !== "repondu"
+      || getProspectStatusAfterResponse(prospect, response) !== (prospect.statutProspect || "nouveau");
   }
 
   function repairKnownResponseStatus(prospect, response) {
+    const statutProspect = getProspectStatusAfterResponse(prospect, response);
     return storage.updateProspect(prospect.id, {
       questionnaireRepondu: true,
       questionnaireReponduLe: prospect.questionnaireReponduLe || response.receivedAt || new Date().toISOString(),
       questionnaireStatut: "repondu",
-      statutProspect: prospect.statutProspect === "archive" || prospect.statutProspect === "transforme"
-        ? prospect.statutProspect
-        : "interesse",
+      statut: getLegacyProspectStatusLabel(statutProspect),
+      statutProspect,
     });
   }
 
@@ -1057,7 +1133,7 @@ Audrey`,
           return;
         }
         const responseAlreadyKnown = isKnownResponse(prospect, questionnaireResponse);
-        if (responseAlreadyKnown && needsKnownResponseStatusRepair(prospect)) {
+        if (responseAlreadyKnown && needsKnownResponseStatusRepair(prospect, questionnaireResponse)) {
           repairKnownResponseStatus(prospect, questionnaireResponse);
           updated += 1;
           return;
@@ -1066,9 +1142,10 @@ Audrey`,
           known += 1;
           return;
         }
+        const statutProspect = getProspectStatusAfterResponse(prospect, questionnaireResponse);
         storage.updateProspect(prospect.id, {
-          statut: "intéressé",
-          statutProspect: "interesse",
+          statut: getLegacyProspectStatusLabel(statutProspect),
+          statutProspect,
           questionnaireRepondu: true,
           questionnaireReponduLe: questionnaireResponse.receivedAt || new Date().toISOString(),
           questionnaireStatut: "repondu",
@@ -1130,8 +1207,8 @@ Audrey`,
       setMessage(inputs.status, "Renseignez l’objet et le corps du mail.", "error");
       return;
     }
-    storage.saveProspectsMailTemplate(type, { objet, corps });
-    setMessage(inputs.status, "Modèle de mail enregistré.", "success");
+    storage.saveProspectsMailTemplate(type, { objet, corps, subject: objet, body: corps });
+    setMessage(inputs.status, "Mail sauvegardé.", "success");
   }
 
   function resetTemplate(type) {
@@ -1139,7 +1216,12 @@ Audrey`,
     const template = DEFAULT_TEMPLATES[type];
     inputs.subject.value = template.objet;
     inputs.body.value = template.corps;
-    storage.saveProspectsMailTemplate(type, template);
+    storage.saveProspectsMailTemplate(type, {
+      objet: template.objet,
+      corps: template.corps,
+      subject: template.objet,
+      body: template.corps,
+    });
     setMessage(inputs.status, "Modèle par défaut rétabli.", "success");
   }
 

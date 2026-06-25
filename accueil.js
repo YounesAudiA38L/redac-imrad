@@ -39,6 +39,17 @@ const calendarEndpointInput = document.querySelector("#calendar-apps-script-endp
 const calendarTokenInput = document.querySelector("#calendar-apps-script-token");
 const saveCalendarConnectionButton = document.querySelector("#save-calendar-connection");
 const calendarConfigMessage = document.querySelector("#calendar-config-message");
+const questionnaireStatsList = document.querySelector("#questionnaire-stats-list");
+const refreshQuestionnaireStatsButton = document.querySelector("#refresh-questionnaire-stats");
+const saveQuestionnaireStatsLinksButton = document.querySelector("#save-questionnaire-stats-links");
+const questionnaireStatsMessage = document.querySelector("#questionnaire-stats-message");
+const questionnaireStatsInputs = {
+  prospects: document.querySelector("#stats-link-prospects"),
+  pointMemoire: document.querySelector("#stats-link-point-memoire"),
+  k4: document.querySelector("#stats-link-k4"),
+  k5: document.querySelector("#stats-link-k5"),
+  rattrapage: document.querySelector("#stats-link-rattrapage"),
+};
 
 let currentFilter = "tous";
 let currentStatusFilter = "tous";
@@ -69,6 +80,16 @@ const allowedAgendaPaths = new Set([
 const CALENDAR_ID = "redac.imrad@gmail.com";
 const CALENDAR_ENDPOINT_KEY = "redacImrad.calendar.endpoint";
 const CALENDAR_TOKEN_KEY = "redacImrad.calendar.token";
+const K4_RESPONSES_ENDPOINT_KEY = "redacImrad.k4Questionnaire.responsesUrl";
+const K4_RESPONSES_TOKEN_KEY = "redacImrad.k4Questionnaire.responsesToken";
+const POINT_MEMOIRE_RESPONSES_ENDPOINT_KEY = "redacImrad.questionnaires.endpoint";
+const questionnaireStatsDefinitions = [
+  { id: "prospects", label: "Prospects" },
+  { id: "pointMemoire", label: "Point Mémoire" },
+  { id: "k4", label: "K4" },
+  { id: "k5", label: "K5" },
+  { id: "rattrapage", label: "Rattrapage" },
+];
 
 function initializeStatusFilter() {
   statusFilter.textContent = "";
@@ -136,8 +157,7 @@ function renderGoogleAgenda(url) {
 }
 
 function initializeGoogleAgenda() {
-  const database = storage.getDatabase();
-  const storedValue = database.settings.googleAgendaEmbedUrl || "";
+  const storedValue = storage.getEffectiveSettings?.().agenda.iframeUrl || storage.getDatabase().settings.googleAgendaEmbedUrl || "";
   const validUrl = validateAgendaUrl(storedValue);
   agendaEmbedInput.value = validUrl || storedValue;
   renderGoogleAgenda(validUrl);
@@ -590,6 +610,194 @@ function setCalendarConfigMessage(message, state = "") {
   calendarConfigMessage.hidden = !message;
 }
 
+function setQuestionnaireStatsMessage(message, state = "") {
+  questionnaireStatsMessage.textContent = message;
+  questionnaireStatsMessage.dataset.state = state;
+  questionnaireStatsMessage.hidden = !message;
+}
+
+function validateGoogleFormsStatsUrl(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+  try {
+    const url = new URL(rawValue);
+    if (url.protocol !== "https:" || url.hostname !== "docs.google.com" || !url.pathname.includes("/forms/")) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function getQuestionnaireStatsLinks() {
+  return storage.getFormsStatsLinks ? storage.getFormsStatsLinks() : storage.getDatabase().settings.formsStatsLinks || {};
+}
+
+function saveQuestionnaireStatsLinks() {
+  const links = {};
+  let hasInvalidLink = false;
+  questionnaireStatsDefinitions.forEach(({ id }) => {
+    const validUrl = validateGoogleFormsStatsUrl(questionnaireStatsInputs[id]?.value);
+    if (validUrl === null) hasInvalidLink = true;
+    links[id] = validUrl || "";
+  });
+
+  if (hasInvalidLink) {
+    setQuestionnaireStatsMessage("Utilisez des liens Google Forms d’édition valides.", "error");
+    return;
+  }
+
+  if (storage.saveFormsStatsLinks) storage.saveFormsStatsLinks(links);
+  else {
+    const database = storage.getDatabase();
+    database.settings = { ...database.settings, formsStatsLinks: links };
+    storage.saveDatabase(database);
+  }
+  Object.entries(links).forEach(([id, url]) => {
+    if (questionnaireStatsInputs[id]) questionnaireStatsInputs[id].value = url;
+  });
+  setQuestionnaireStatsMessage("Liens statistiques enregistrés.", "success");
+  renderQuestionnaireStats();
+}
+
+function initializeQuestionnaireStatsLinks() {
+  const links = getQuestionnaireStatsLinks();
+  questionnaireStatsDefinitions.forEach(({ id }) => {
+    if (questionnaireStatsInputs[id]) questionnaireStatsInputs[id].value = links[id] || "";
+  });
+}
+
+function formatQuestionnaireResponseCount(count) {
+  if (count === null) return "Non connecté";
+  if (count === "error") return "Erreur de récupération";
+  const numericCount = Number(count) || 0;
+  return `${numericCount} réponse${numericCount > 1 ? "s" : ""} au total`;
+}
+
+function validateStatsEndpoint(rawValue) {
+  try {
+    const url = new URL(String(rawValue || "").trim());
+    if (url.protocol !== "https:" || url.hostname !== "script.google.com" || !url.pathname.includes("/macros/") || !url.pathname.endsWith("/exec")) return "";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+async function fetchQuestionnaireCount(endpoint, token = "") {
+  const url = token
+    ? `${endpoint}?action=getResponses&token=${encodeURIComponent(token)}`
+    : endpoint;
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  const data = await response.json();
+  if (!response.ok || data.success !== true) throw new Error(data.error || data.message || "Réponse Apps Script inattendue.");
+  if (Number.isFinite(Number(data.count))) return Number(data.count);
+  if (Array.isArray(data.responses)) return data.responses.length;
+  return 0;
+}
+
+function getQuestionnaireStatsConnection(id) {
+  if (id === "prospects") {
+    return {
+      endpoint: validateStatsEndpoint(storage.getProspectsResponsesEndpoint?.() || ""),
+      token: String(storage.getProspectsResponsesToken?.() || "").trim(),
+      needsToken: true,
+    };
+  }
+  if (id === "pointMemoire") {
+    const effectivePointMemoire = storage.getEffectiveSettings?.().pointMemoire || {};
+    return {
+      endpoint: validateStatsEndpoint(effectivePointMemoire.appsScriptUrl || localStorage.getItem(POINT_MEMOIRE_RESPONSES_ENDPOINT_KEY) || ""),
+      token: String(effectivePointMemoire.token || "").trim(),
+      needsToken: false,
+    };
+  }
+  if (id === "k4") {
+    const effectiveK4 = storage.getEffectiveSettings?.().k4 || {};
+    return {
+      endpoint: validateStatsEndpoint(effectiveK4.responsesAppsScriptUrl || localStorage.getItem(K4_RESPONSES_ENDPOINT_KEY) || ""),
+      token: String(effectiveK4.token || localStorage.getItem(K4_RESPONSES_TOKEN_KEY) || "").trim(),
+      needsToken: true,
+    };
+  }
+  if (id === "k5") {
+    const effectiveK5 = storage.getEffectiveSettings?.().k5 || {};
+    return {
+      endpoint: validateStatsEndpoint(effectiveK5.responsesAppsScriptUrl || ""),
+      token: String(effectiveK5.token || "").trim(),
+      needsToken: true,
+    };
+  }
+  if (id === "rattrapage") {
+    const effectiveRattrapage = storage.getEffectiveSettings?.().rattrapage || {};
+    return {
+      endpoint: validateStatsEndpoint(effectiveRattrapage.responsesAppsScriptUrl || ""),
+      token: String(effectiveRattrapage.token || "").trim(),
+      needsToken: true,
+    };
+  }
+  return { endpoint: "", token: "", needsToken: false };
+}
+
+async function loadQuestionnaireStatsCounts() {
+  const result = {};
+  await Promise.all(questionnaireStatsDefinitions.map(async ({ id }) => {
+    const connection = getQuestionnaireStatsConnection(id);
+    if (!connection.endpoint || (connection.needsToken && !connection.token)) {
+      result[id] = null;
+      return;
+    }
+    try {
+      result[id] = await fetchQuestionnaireCount(connection.endpoint, connection.token);
+    } catch {
+      result[id] = "error";
+    }
+  }));
+  return result;
+}
+
+function createQuestionnaireStatsRow(definition, count, links) {
+  const row = document.createElement("article");
+  row.className = "questionnaire-stats-row";
+  const content = document.createElement("div");
+  const title = document.createElement("strong");
+  title.textContent = definition.label;
+  const total = document.createElement("span");
+  total.textContent = formatQuestionnaireResponseCount(count);
+  content.append(title, total);
+
+  const link = links[definition.id] || "";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = link ? "secondary-action" : "secondary-action is-disabled";
+  button.textContent = link ? "Voir les statistiques" : "Lien non configuré";
+  button.disabled = !link;
+  button.addEventListener("click", () => {
+    if (link) window.open(link, "_blank");
+  });
+  row.append(content, button);
+  return row;
+}
+
+async function renderQuestionnaireStats() {
+  if (!questionnaireStatsList) return;
+  questionnaireStatsList.textContent = "";
+  const loading = document.createElement("p");
+  loading.className = "empty-state";
+  loading.textContent = "Récupération des statistiques questionnaires.";
+  questionnaireStatsList.append(loading);
+  refreshQuestionnaireStatsButton.disabled = true;
+
+  const links = getQuestionnaireStatsLinks();
+  const counts = await loadQuestionnaireStatsCounts();
+  questionnaireStatsList.textContent = "";
+  questionnaireStatsDefinitions.forEach((definition) => {
+    questionnaireStatsList.append(createQuestionnaireStatsRow(definition, counts[definition.id], links));
+  });
+  refreshQuestionnaireStatsButton.disabled = false;
+}
+
 function parseCalendarEndpoint(rawValue) {
   try {
     const parsedUrl = new URL(String(rawValue || "").trim());
@@ -604,8 +812,9 @@ function parseCalendarEndpoint(rawValue) {
 }
 
 function initializeCalendarConnection() {
-  calendarEndpointInput.value = localStorage.getItem(CALENDAR_ENDPOINT_KEY) || "";
-  calendarTokenInput.value = localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
+  const effectiveAgenda = storage.getEffectiveSettings?.().agenda || {};
+  calendarEndpointInput.value = effectiveAgenda.appsScriptUrl || localStorage.getItem(CALENDAR_ENDPOINT_KEY) || "";
+  calendarTokenInput.value = effectiveAgenda.token || localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
 }
 
 function saveCalendarConnection() {
@@ -662,9 +871,10 @@ async function addGoogleAppointment(event) {
     return;
   }
 
-  const parsedEndpoint = parseCalendarEndpoint(localStorage.getItem(CALENDAR_ENDPOINT_KEY));
+  const effectiveAgenda = storage.getEffectiveSettings?.().agenda || {};
+  const parsedEndpoint = parseCalendarEndpoint(effectiveAgenda.appsScriptUrl || localStorage.getItem(CALENDAR_ENDPOINT_KEY));
   const agendaScriptUrl = parsedEndpoint?.endpoint || "";
-  const agendaToken = localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
+  const agendaToken = effectiveAgenda.token || localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
   if (!agendaScriptUrl || !agendaToken) {
     setAppointmentMessage("Connexion Apps Script de l’agenda à configurer.", "error");
     return;
@@ -757,6 +967,8 @@ renderStudents();
 initializeGoogleAgenda();
 initializeCalendarConnection();
 initializeAppointmentTimeSlots();
+initializeQuestionnaireStatsLinks();
+renderQuestionnaireStats();
 
 parcoursSelect.addEventListener("change", () => showParcoursFields(parcoursSelect.value));
 fileInput.addEventListener("change", () => { fileStatus.textContent = fileInput.files?.[0]?.name || "Aucun fichier sélectionné."; });
@@ -819,6 +1031,8 @@ saveAgendaButton.addEventListener("click", () => {
 
 saveCalendarConnectionButton.addEventListener("click", saveCalendarConnection);
 appointmentForm.addEventListener("submit", addGoogleAppointment);
+saveQuestionnaireStatsLinksButton.addEventListener("click", saveQuestionnaireStatsLinks);
+refreshQuestionnaireStatsButton.addEventListener("click", renderQuestionnaireStats);
 
 quickProspectForm.addEventListener("submit", (event) => {
   event.preventDefault();

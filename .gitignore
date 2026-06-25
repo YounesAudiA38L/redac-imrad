@@ -5,3 +5,5 @@ node_modules/
 *.log
 dist/
 .vite/
+config.private.js
+CONFIG_PRIVEE_REDAC_IMRAD*.json

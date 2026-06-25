@@ -47,7 +47,7 @@
             <div class="prospect-mail-editor" data-mail-editor="questionnaire" hidden>
               <label class="field"><span>Objet</span><input id="prospect-questionnaire-template-subject" type="text" /></label>
               <label class="field"><span>Corps du mail</span><textarea id="prospect-questionnaire-template-body" rows="11"></textarea><small>Variables : {prenom}, {nom}, {email}, {niveau}, {lienForms}</small></label>
-              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="questionnaire">Enregistrer le modèle</button><button class="secondary-action" type="button" data-reset-mail-template="questionnaire">Réinitialiser le modèle</button></div>
+              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="questionnaire">Sauvegarder le mail</button><button class="secondary-action" type="button" data-reset-mail-template="questionnaire">Réinitialiser le mail</button></div>
               <p id="prospect-questionnaire-template-status" class="form-message" role="status" aria-live="polite" hidden></p>
             </div>
             <p id="prospect-bulk-status" class="form-message" role="status" aria-live="polite" hidden></p>
@@ -60,7 +60,7 @@
             <div class="prospect-mail-editor" data-mail-editor="relance" hidden>
               <label class="field"><span>Objet</span><input id="prospect-relance-template-subject" type="text" /></label>
               <label class="field"><span>Corps du mail</span><textarea id="prospect-relance-template-body" rows="11"></textarea><small>Variables : {prenom}, {nom}, {email}, {niveau}, {lienForms}</small></label>
-              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="relance">Enregistrer le modèle</button><button class="secondary-action" type="button" data-reset-mail-template="relance">Restaurer le modèle par défaut</button></div>
+              <div class="prospect-mail-editor-actions"><button class="primary-action" type="button" data-save-mail-template="relance">Sauvegarder le mail</button><button class="secondary-action" type="button" data-reset-mail-template="relance">Réinitialiser le mail</button></div>
               <p id="prospect-relance-template-status" class="form-message" role="status" aria-live="polite" hidden></p>
             </div>
             <div id="prospect-relance-confirmation" class="prospect-relance-confirmation" hidden>
@@ -132,8 +132,9 @@
         </div>
       </section>
     </main>
+    <script src="config.private.js"></script>
     <script src="navigation.js?v=9" defer></script>
-    <script src="js/storage.js?v=24" defer></script>
-    <script src="js/prospects.js?v=17" defer></script>
+    <script src="js/storage.js?v=25" defer></script>
+    <script src="js/prospects.js?v=18" defer></script>
   </body>
 </html>

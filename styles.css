@@ -312,7 +312,8 @@ p {
 .prospect-card-header p {
   margin-top: 5px;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .prospect-status-badges {
@@ -359,6 +360,12 @@ p {
   border-color: #c5d4df;
   background: #e8f0f5;
   color: #45677d;
+}
+
+.prospect-status-badge[data-tone="prospect-en-reflexion"] {
+  border-color: #dbc99e;
+  background: #f6edd4;
+  color: #725a24;
 }
 
 .prospect-status-badge[data-tone="prospect-archive"],
@@ -3057,7 +3064,7 @@ input[type="file"]::file-selector-button {
 /* === PROSPECTS — CARTE IDENTITÉ + PILULES === */
 .prospect-card-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(210px, auto);
+  grid-template-columns: minmax(280px, 1fr) minmax(210px, max-content);
   gap: 24px;
   align-items: start;
 }
@@ -3079,8 +3086,9 @@ input[type="file"]::file-selector-button {
 
 .prospect-identity-details > div {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
 }
 
 .prospect-identity-details dt {
@@ -3095,7 +3103,9 @@ input[type="file"]::file-selector-button {
   color: var(--text);
   font-size: 0.88rem;
   font-weight: 650;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: normal;
 }
 
 .prospect-followup-pills {
@@ -3142,6 +3152,12 @@ input[type="file"]::file-selector-button {
   border-color: #c4d4df;
   background: #e6eff5;
   color: #45677d;
+}
+
+.prospect-pill[data-tone="prospect-en-reflexion"] {
+  border-color: #dbc99e;
+  background: #f6edd4;
+  color: #725a24;
 }
 
 .prospect-pill[data-tone="prospect-non-interesse"],
@@ -3483,9 +3499,9 @@ input[type="file"]::file-selector-button {
 
 .prospect-archive-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
+  grid-template-columns: minmax(280px, 1fr) minmax(220px, max-content);
+  gap: 24px;
+  align-items: start;
   padding: 16px;
   border: 1px solid var(--line);
   border-left: 6px solid var(--color-prospects);
@@ -3525,7 +3541,9 @@ input[type="file"]::file-selector-button {
 .prospect-archive-details dd {
   min-width: 0;
   margin: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: normal;
 }
 
 .prospect-archive-note {
@@ -3537,9 +3555,22 @@ input[type="file"]::file-selector-button {
 
 .prospect-archive-actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
+  min-width: 220px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.prospect-archive-actions button,
+.prospect-archive-actions a {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.prospect-archive-card > .prospect-response-panel {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 720px) {
@@ -3548,11 +3579,79 @@ input[type="file"]::file-selector-button {
   }
 
   .prospect-archive-actions {
+    min-width: 0;
     justify-content: flex-start;
   }
 
   .prospect-archive-details > div {
     grid-template-columns: 1fr;
     gap: 2px;
+  }
+}
+
+/* === STATISTIQUES QUESTIONNAIRES ACCUEIL === */
+.home-statistics-section {
+  background: #fffdf8;
+}
+
+.questionnaire-stats-config {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.questionnaire-stats-actions {
+  margin-bottom: 12px;
+}
+
+.questionnaire-stats-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.questionnaire-stats-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.questionnaire-stats-row > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.questionnaire-stats-row strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.questionnaire-stats-row span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.questionnaire-stats-row .is-disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .questionnaire-stats-config,
+  .questionnaire-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .questionnaire-stats-row button {
+    width: 100%;
+    justify-content: center;
   }
 }

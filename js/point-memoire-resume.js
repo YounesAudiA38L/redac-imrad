@@ -44,11 +44,11 @@
   }
 
   function getEndpoint() {
-    return localStorage.getItem(ENDPOINT_KEY) || "";
+    return global.RedacStorage.getEffectiveSettings?.().pointMemoire.appsScriptUrl || localStorage.getItem(ENDPOINT_KEY) || "";
   }
 
   function getToken() {
-    const savedToken = localStorage.getItem(TOKEN_KEY);
+    const savedToken = global.RedacStorage.getEffectiveSettings?.().pointMemoire.token || localStorage.getItem(TOKEN_KEY);
     if (savedToken) return savedToken;
     try {
       return new URL(getEndpoint()).searchParams.get("token") || "";

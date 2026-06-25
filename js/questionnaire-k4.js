@@ -112,7 +112,13 @@
   }
 
   function getConfiguration() {
-    return Object.fromEntries(Object.entries(CONFIG_KEYS).map(([name, key]) => [name, localStorage.getItem(key) || ""]));
+    const config = Object.fromEntries(Object.entries(CONFIG_KEYS).map(([name, key]) => [name, localStorage.getItem(key) || ""]));
+    const effectiveK4 = global.RedacStorage.getEffectiveSettings?.().k4 || {};
+    return {
+      ...config,
+      responsesUrl: config.responsesUrl || effectiveK4.responsesAppsScriptUrl || "",
+      responsesToken: config.responsesToken || effectiveK4.token || "",
+    };
   }
 
   function validateHttpsUrl(value, label, appsScriptOnly = false) {

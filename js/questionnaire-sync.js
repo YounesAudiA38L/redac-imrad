@@ -14,7 +14,7 @@
   let latestResponses = loadCachedResponses();
 
   function getQuestionnaireEndpoint() {
-    return localStorage.getItem(ENDPOINT_KEY) || "";
+    return global.RedacStorage?.getEffectiveSettings?.().pointMemoire.appsScriptUrl || localStorage.getItem(ENDPOINT_KEY) || "";
   }
 
   function saveQuestionnaireEndpoint(url) {

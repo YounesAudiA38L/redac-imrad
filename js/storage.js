@@ -11,7 +11,7 @@
     termine: "Terminé",
     archive: "Archivé",
   });
-  const PROSPECT_STATUSES = new Set(["nouveau", "a-relancer", "interesse", "non-interesse", "transforme", "archive"]);
+  const PROSPECT_STATUSES = new Set(["nouveau", "a-relancer", "interesse", "non-interesse", "en-reflexion", "transforme", "archive"]);
   const QUESTIONNAIRE_STATUSES = new Set(["a-envoyer", "envoye", "repondu"]);
 
   function createEmptyProspectResponse() {
@@ -193,6 +193,81 @@
     return normalized;
   }
 
+  function getPrivateConfig() {
+    const config = global.REDAC_IMRAD_PRIVATE_CONFIG;
+    return config && typeof config === "object" ? config : {};
+  }
+
+  function readLocalStorage(key) {
+    return String(localStorage.getItem(key) || "").trim();
+  }
+
+  function localOrPrivate(localValue, privateValue) {
+    return String(localValue || "").trim() || String(privateValue || "").trim();
+  }
+
+  function getEffectiveSettings() {
+    const database = getDatabase();
+    const settings = database.settings || {};
+    const privateConfig = getPrivateConfig();
+    const prospectSettings = settings.prospects || {};
+    const statsLinks = settings.formsStatsLinks || {};
+    const agendaConfig = privateConfig.agenda || {};
+    const prospectsConfig = privateConfig.prospects || {};
+    const pointMemoireConfig = privateConfig.pointMemoire || {};
+    const k4Config = privateConfig.k4 || {};
+    const k5Config = privateConfig.k5 || {};
+    const rattrapageConfig = privateConfig.rattrapage || {};
+
+    return {
+      agenda: {
+        iframeUrl: localOrPrivate(settings.googleAgendaEmbedUrl, agendaConfig.iframeUrl),
+        appsScriptUrl: localOrPrivate(readLocalStorage("redacImrad.calendar.endpoint"), agendaConfig.appsScriptUrl),
+        token: localOrPrivate(readLocalStorage("redacImrad.calendar.token"), agendaConfig.token),
+      },
+      prospects: {
+        formsPublicUrl: localOrPrivate(prospectSettings.formUrl, prospectsConfig.formsPublicUrl),
+        formsStatsUrl: localOrPrivate(statsLinks.prospects, prospectsConfig.formsStatsUrl),
+        responsesAppsScriptUrl: localOrPrivate(
+          prospectSettings.responsesEndpoint || readLocalStorage("redacImrad.prospects.questionnaireResponses.endpoint"),
+          prospectsConfig.responsesAppsScriptUrl,
+        ),
+        mailsAppsScriptUrl: localOrPrivate(
+          prospectSettings.mailEndpoint || readLocalStorage("redacImrad.prospects.questionnaireSend.endpoint"),
+          prospectsConfig.mailsAppsScriptUrl,
+        ),
+        tokenResponses: localOrPrivate(
+          prospectSettings.responsesToken || readLocalStorage("redacImrad.prospects.questionnaireResponses.token"),
+          prospectsConfig.tokenResponses,
+        ),
+        tokenMails: localOrPrivate(
+          prospectSettings.mailToken || readLocalStorage("redacImrad.prospects.questionnaireSend.token"),
+          prospectsConfig.tokenMails,
+        ),
+      },
+      pointMemoire: {
+        formsStatsUrl: localOrPrivate(statsLinks.pointMemoire, pointMemoireConfig.formsStatsUrl),
+        appsScriptUrl: localOrPrivate(readLocalStorage("redacImrad.pointMemoireResume.endpoint"), pointMemoireConfig.appsScriptUrl),
+        token: localOrPrivate(readLocalStorage("redacImrad.pointMemoireResume.token"), pointMemoireConfig.token),
+      },
+      k4: {
+        formsStatsUrl: localOrPrivate(statsLinks.k4, k4Config.formsStatsUrl),
+        responsesAppsScriptUrl: localOrPrivate(readLocalStorage("redacImrad.k4Questionnaire.responsesUrl"), k4Config.responsesAppsScriptUrl),
+        token: localOrPrivate(readLocalStorage("redacImrad.k4Questionnaire.responsesToken"), k4Config.token),
+      },
+      k5: {
+        formsStatsUrl: localOrPrivate(statsLinks.k5, k5Config.formsStatsUrl),
+        responsesAppsScriptUrl: localOrPrivate(readLocalStorage("redacImrad.k5Questionnaire.responsesUrl"), k5Config.responsesAppsScriptUrl),
+        token: localOrPrivate(readLocalStorage("redacImrad.k5Questionnaire.responsesToken"), k5Config.token),
+      },
+      rattrapage: {
+        formsStatsUrl: localOrPrivate(statsLinks.rattrapage, rattrapageConfig.formsStatsUrl),
+        responsesAppsScriptUrl: localOrPrivate(readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesUrl"), rattrapageConfig.responsesAppsScriptUrl),
+        token: localOrPrivate(readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesToken"), rattrapageConfig.token),
+      },
+    };
+  }
+
   function getProspectsSettings() {
     const settings = getDatabase().settings;
     return settings.prospects && typeof settings.prospects === "object" ? settings.prospects : {};
@@ -211,8 +286,36 @@
     return database.settings.prospects;
   }
 
+  function getFormsStatsLinks() {
+    const effective = getEffectiveSettings();
+    return {
+      prospects: effective.prospects.formsStatsUrl,
+      pointMemoire: effective.pointMemoire.formsStatsUrl,
+      k4: effective.k4.formsStatsUrl,
+      k5: effective.k5.formsStatsUrl,
+      rattrapage: effective.rattrapage.formsStatsUrl,
+    };
+  }
+
+  function saveFormsStatsLinks(links) {
+    const database = getDatabase();
+    database.settings = {
+      ...database.settings,
+      formsStatsLinks: {
+        ...(database.settings.formsStatsLinks || {}),
+        prospects: String(links?.prospects || "").trim(),
+        pointMemoire: String(links?.pointMemoire || "").trim(),
+        k4: String(links?.k4 || "").trim(),
+        k5: String(links?.k5 || "").trim(),
+        rattrapage: String(links?.rattrapage || "").trim(),
+      },
+    };
+    saveDatabase(database);
+    return database.settings.formsStatsLinks;
+  }
+
   function getProspectsFormUrl() {
-    return getProspectsSettings().formUrl || "";
+    return getEffectiveSettings().prospects.formsPublicUrl;
   }
 
   function saveProspectsFormUrl(url) {
@@ -220,7 +323,7 @@
   }
 
   function getProspectsMailEndpoint() {
-    return getProspectsSettings().mailEndpoint || "";
+    return getEffectiveSettings().prospects.mailsAppsScriptUrl;
   }
 
   function saveProspectsMailEndpoint(url) {
@@ -228,7 +331,7 @@
   }
 
   function getProspectsMailToken() {
-    return getProspectsSettings().mailToken || "";
+    return getEffectiveSettings().prospects.tokenMails;
   }
 
   function saveProspectsMailToken(token) {
@@ -236,7 +339,7 @@
   }
 
   function getProspectsResponsesEndpoint() {
-    return getProspectsSettings().responsesEndpoint || "";
+    return getEffectiveSettings().prospects.responsesAppsScriptUrl;
   }
 
   function saveProspectsResponsesEndpoint(url) {
@@ -244,7 +347,7 @@
   }
 
   function getProspectsResponsesToken() {
-    return getProspectsSettings().responsesToken || "";
+    return getEffectiveSettings().prospects.tokenResponses;
   }
 
   function saveProspectsResponsesToken(token) {
@@ -263,8 +366,10 @@
       mailTemplates: {
         ...currentTemplates,
         [type]: {
-          objet: String(template?.objet || ""),
-          corps: String(template?.corps || ""),
+          objet: String(template?.objet || template?.subject || ""),
+          corps: String(template?.corps || template?.body || ""),
+          subject: String(template?.subject || template?.objet || ""),
+          body: String(template?.body || template?.corps || ""),
         },
       },
     }).mailTemplates;
@@ -740,5 +845,8 @@
     saveProspectsResponsesToken,
     getProspectsMailTemplates,
     saveProspectsMailTemplate,
+    getFormsStatsLinks,
+    saveFormsStatsLinks,
+    getEffectiveSettings,
   });
 })(window);
