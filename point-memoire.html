@@ -18,6 +18,51 @@
         <div id="questionnaire-response-list" class="questionnaire-list" aria-live="polite"></div>
       </section>
 
+      <section class="workspace point-synthese-workspace" aria-labelledby="point-synthese-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Préparation de la visio</p>
+            <h2 id="point-synthese-title">Synthèse des réponses pré-visio</h2>
+          </div>
+        </div>
+        <p class="sync-note">Regroupement descriptif des réponses de l’étudiant. À vérifier et ajuster par Audrey.</p>
+        <div class="point-synthese-controls">
+          <label class="field">
+            <span>Étudiant Point Mémoire</span>
+            <select id="point-synthese-student">
+              <option value="">Sélectionner un étudiant</option>
+            </select>
+          </label>
+        </div>
+        <div id="point-synthese-output" class="point-synthese-output" aria-live="polite"></div>
+        <label class="field point-synthese-editor">
+          <span>Synthèse ajustée par Audrey</span>
+          <textarea id="point-synthese-adjusted" rows="10" placeholder="Ajuster ici la synthèse si besoin avant la visio."></textarea>
+        </label>
+        <div class="form-actions point-synthese-actions">
+          <button class="secondary-action" type="button" id="copy-point-synthese" disabled>Copier la synthèse</button>
+          <button class="primary-action" type="button" id="save-point-synthese" disabled>Enregistrer la synthèse</button>
+        </div>
+        <p id="point-synthese-status" class="form-message" role="status" aria-live="polite" hidden></p>
+
+        <section class="point-previsio-documents" aria-labelledby="point-documents-title">
+          <h3 id="point-documents-title">Documents et notes pré-visio</h3>
+          <p class="sync-note">Pour un Point Mémoire, 2 à 5 pages suffisent. L’analyse complète du mémoire se fait plutôt dans l’accompagnement K5.</p>
+          <label class="field">
+            <span>Pages / extraits transmis par l’étudiant</span>
+            <textarea id="point-documents-pages" rows="8" placeholder="Coller ici 2 à 5 pages maximum, des extraits, un plan provisoire ou des éléments utiles pour la visio."></textarea>
+          </label>
+          <label class="field">
+            <span>Lien vers les documents</span>
+            <input id="point-documents-link" type="text" placeholder="Lien Drive, dossier partagé, mail de référence…" />
+          </label>
+          <div class="form-actions">
+            <button class="secondary-action" type="button" id="save-point-documents" disabled>Enregistrer les documents / notes</button>
+          </div>
+          <p id="point-documents-status" class="form-message" role="status" aria-live="polite" hidden></p>
+        </section>
+      </section>
+
       <section class="workspace" aria-labelledby="point-resume-title">
         <div class="section-heading">
           <div>
@@ -82,6 +127,6 @@
 
       <section class="workspace"><div class="section-heading"><div><p class="eyebrow">Fiches étudiant</p><h2>Étudiants accompagnés</h2></div></div><div class="student-grid" data-parcours-students="point-memoire" aria-live="polite"></div></section>
     </main>
-    <script src="config.private.js"></script><script src="navigation.js?v=8" defer></script><script src="js/storage.js?v=25" defer></script><script src="grille-point-memoire.js?v=6" defer></script><script src="js/questionnaire-sync.js?v=11" defer></script><script src="parcours.js?v=14" defer></script><script src="js/point-memoire-resume.js?v=3" defer></script>
+    <script src="config.private.js"></script><script src="navigation.js?v=8" defer></script><script src="js/storage.js?v=25" defer></script><script src="grille-point-memoire.js?v=6" defer></script><script src="js/questionnaire-sync.js?v=11" defer></script><script src="parcours.js?v=14" defer></script><script src="js/point-memoire-synthese.js?v=1" defer></script><script src="js/point-memoire-resume.js?v=3" defer></script>
   </body>
 </html>
