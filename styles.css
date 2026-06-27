@@ -3962,15 +3962,15 @@ body,
 
 .main-tab.active {
   border-color: var(--nav-color);
-  background: var(--nav-soft);
-  color: var(--nav-color);
+  background: var(--nav-color);
+  color: var(--nav-active-text, #ffffff);
   box-shadow: 0 6px 16px color-mix(in srgb, var(--nav-color) 18%, transparent);
 }
 
 .main-tab.active:hover,
 .main-tab.active:focus-visible {
-  background: color-mix(in srgb, var(--nav-soft) 82%, #ffffff);
-  color: var(--nav-color);
+  background: var(--nav-color);
+  color: var(--nav-active-text, #ffffff);
 }
 
 .card,
