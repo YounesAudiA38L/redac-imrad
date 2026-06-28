@@ -1,12 +1,14 @@
-# Architecture du projet Redac-IMRaD
+# Architecture Redac-IMRaD
 
-Ce document decrit l'organisation actuelle du projet et les regles a respecter pour garder une architecture lisible, stable et preparable a une future migration SQLite.
+Ce document fixe l'architecture actuelle du projet apres la reorganisation par couches metier. Il sert de reference pour eviter les regressions lors des prochaines interventions.
 
-## Organisation par couches
+## Couches actuelles
 
 ### pages/
 
-Le dossier `pages/` contient les controleurs propres a chaque onglet principal :
+`pages/` contient la logique specifique a chaque page ou onglet principal.
+
+Exemples :
 
 - `pages/accueil/`
 - `pages/prospects/`
@@ -15,80 +17,82 @@ Le dossier `pages/` contient les controleurs propres a chaque onglet principal :
 - `pages/k5/`
 - `pages/rattrapage/`
 
-Une page orchestre l'interface visible de son onglet : lecture du DOM, reactions aux clics, appels aux services, affichage des messages.
-
-Une page ne doit pas contenir de logique de stockage si un service ou un repository existe deja.
+Une page gere l'orchestration de son ecran : lecture du DOM, evenements utilisateur, appels aux services, affichage des messages.
 
 ### components/
 
-Le dossier `components/` contient les composants reutilisables entre plusieurs pages.
+`components/` contient les composants reutilisables entre plusieurs pages.
 
-Exemple actuel : `components/parcours/`, qui porte le rendu commun des listes et cartes etudiants pour les onglets parcours.
+Les composants doivent rester centres sur le rendu, les interactions locales et la composition d'interface.
 
-Les composants doivent rester centres sur le rendu, les interactions locales et la composition d'interface. Ils ne doivent pas gerer directement le stockage.
+### components/parcours/parcours-page.js
+
+`components/parcours/parcours-page.js` est l'ancien `parcours.js`.
+
+Il contient le rendu commun des onglets parcours : Point Memoire, K4, K5 et Rattrapage.
 
 ### services/
 
-Le dossier `services/` contient la logique metier utilisee par les pages et les composants.
+`services/` contient la logique metier.
 
-Les services portent les decisions fonctionnelles : creer, modifier, archiver, filtrer, transformer, preparer ou synchroniser des donnees.
+Les services portent les decisions fonctionnelles : creer, modifier, archiver, transformer, filtrer, preparer ou synchroniser des donnees.
 
-Les pages doivent passer par les services quand elles ont besoin d'acceder aux donnees ou de lancer une action metier.
+Les pages et composants doivent appeler les services quand une action depasse le simple rendu.
 
 ### repositories/
 
-Le dossier `repositories/` isole l'acces aux donnees.
+`repositories/` contient l'acces aux collections de donnees.
 
-Un repository fournit un contrat stable entre les services et la couche de persistance. Les services ne devraient pas avoir besoin de savoir si les donnees viennent de `localStorage`, de SQLite ou d'une autre source.
+Les repositories isolent les services du detail de persistance. Ils fournissent un contrat stable pour lire ou modifier les collections.
 
 ### database/
 
-Le dossier `database/` contient les adaptateurs de persistance.
+`database/` contient l'adaptateur de persistance.
 
-L'adaptateur actuel s'appuie sur `localStorage`. A terme, ce dossier preparera la migration vers SQLite, sans imposer de modification directe dans les pages.
+L'adaptateur actuel est base sur `localStorage`. Ce dossier preparera plus tard une migration vers SQLite.
+
+### database/local-storage-database.js
+
+`database/local-storage-database.js` est l'ancien `js/storage.js`.
+
+Il conserve l'adaptateur `localStorage` actuel et expose la base de donnees locale existante.
 
 ### constants/
 
-Le dossier `constants/` contient les valeurs partagees : parcours autorises, libelles communs, statuts ou autres constantes transverses.
-
-Les constantes reutilisees ne doivent pas etre redefinies dans plusieurs fichiers si elles peuvent etre centralisees proprement.
+`constants/` contient les constantes partagees : parcours, libelles, statuts ou valeurs transversales reutilisees.
 
 ### forms/
 
-Le dossier `forms/` contient les scripts lies aux questionnaires, imports ou synchronisations de formulaires externes.
-
-Ces scripts peuvent appeler les services, mais ne doivent pas contourner la couche de donnees quand une fonction existe deja.
+`forms/` contient la logique liee aux questionnaires Google Forms et a leur synchronisation.
 
 ### utils/
 
-Le dossier `utils/` est reserve aux fonctions utilitaires transverses, sans dependance metier forte.
-
-Un utilitaire doit rester generique : formatage, normalisation, verification simple, aide technique reutilisable.
+`utils/` contient les outils transversaux sans dependance metier forte.
 
 ## Sens attendu des dependances
 
-Le sens attendu est :
+Le sens attendu des dependances est :
 
 ```text
 Page -> Component -> Service -> Repository -> Database
 ```
 
-En pratique :
+Regle generale :
 
-- une page peut utiliser un composant et appeler un service ;
-- un composant peut appeler un service si une interaction utilisateur le necessite ;
+- une page peut appeler un composant ou un service ;
+- un composant peut appeler un service si necessaire ;
 - un service appelle un repository ;
-- un repository appelle la couche `database/` ;
-- `database/` gere les details techniques de persistance.
+- un repository appelle `database/` ;
+- `database/` ne depend jamais des pages, composants ou services.
 
-Les dependances ne doivent pas remonter dans l'autre sens : `database/` ne connait pas les pages, les repositories ne manipulent pas le DOM, les services ne doivent pas dependre de la structure HTML.
-
-## Regles d'architecture
+## Regles obligatoires
 
 - Une page ne doit pas acceder directement au `localStorage` si un service ou repository existe.
-- Les composants ne doivent pas gerer le stockage.
+- Les composants ne doivent pas gerer directement la persistance.
 - Les services portent la logique metier.
 - Les repositories isolent l'acces aux donnees.
-- `database/` contient l'adaptateur `localStorage` actuel et preparera SQLite plus tard.
+- `database/` contient l'adaptateur `localStorage` actuel.
 - `config.private.js` ne doit jamais etre suivi par Git.
-- Les changements de structure doivent rester progressifs et verifier les pages principales apres chaque etape.
+- Aucun token ni URL Apps Script reelle ne doit etre code en dur.
+- Toute evolution de structure doit respecter les couches existantes.
+- Toute modification doit verifier que les pages principales s'ouvrent encore.
