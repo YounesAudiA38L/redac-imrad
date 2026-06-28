@@ -27,16 +27,22 @@
       const currentDatabase = database.getDatabase();
       const endpointRattrapage = String(settings?.endpointRattrapage || settings?.responsesAppsScriptUrl || "").trim();
       const tokenRattrapage = String(settings?.tokenRattrapage || settings?.token || "").trim();
+      const current = currentDatabase.settings?.rattrapage || {};
+      const valueOrCurrent = (key) => Object.prototype.hasOwnProperty.call(settings || {}, key)
+        ? String(settings?.[key] || "").trim()
+        : String(current[key] || "").trim();
       currentDatabase.settings = {
         ...(currentDatabase.settings || {}),
         rattrapage: {
-          ...(currentDatabase.settings?.rattrapage || {}),
-          lienFormsEntreeRattrapage: String(settings?.lienFormsEntreeRattrapage || "").trim(),
-          sheetIdEntreeRattrapage: String(settings?.sheetIdEntreeRattrapage || "").trim(),
-          endpointRattrapage,
-          tokenRattrapage,
-          responsesAppsScriptUrl: endpointRattrapage,
-          token: tokenRattrapage,
+          ...current,
+          lienFormsEntreeRattrapage: valueOrCurrent("lienFormsEntreeRattrapage"),
+          sheetIdEntreeRattrapage: valueOrCurrent("sheetIdEntreeRattrapage"),
+          lienFormsSuiviRattrapage: valueOrCurrent("lienFormsSuiviRattrapage"),
+          sheetIdSuiviRattrapage: valueOrCurrent("sheetIdSuiviRattrapage"),
+          endpointRattrapage: endpointRattrapage || current.endpointRattrapage || current.responsesAppsScriptUrl || "",
+          tokenRattrapage: tokenRattrapage || current.tokenRattrapage || current.token || "",
+          responsesAppsScriptUrl: endpointRattrapage || current.endpointRattrapage || current.responsesAppsScriptUrl || "",
+          token: tokenRattrapage || current.tokenRattrapage || current.token || "",
         },
       };
       database.saveDatabase(currentDatabase);

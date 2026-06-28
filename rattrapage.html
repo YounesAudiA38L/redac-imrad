@@ -28,7 +28,26 @@
           </section>
         </div>
       </section>
+      <section class="workspace" aria-labelledby="rattrapage-suivi-title">
+        <div class="section-heading"><div><p class="eyebrow">Suivi</p><h2 id="rattrapage-suivi-title">Suivi J+15 Rattrapage</h2></div></div>
+        <div class="rattrapage-suivi-config-grid">
+          <label class="field"><span>Lien Google Forms du questionnaire de suivi J+15</span><input id="rattrapage-suivi-form-url" type="url" inputmode="url" placeholder="https://docs.google.com/forms/..." /></label>
+          <label class="field"><span>ID Google Sheets des réponses J+15</span><input id="rattrapage-suivi-sheet-id" type="text" autocomplete="off" /></label>
+        </div>
+        <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-suivi-config">Enregistrer la configuration</button></div>
+        <p id="rattrapage-suivi-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
+        <div class="rattrapage-suivi-student-panel panel">
+          <p class="sync-note">Le suivi J+15 utilise l’étudiant Rattrapage sélectionné dans le bloc questionnaire d’entrée.</p>
+          <label class="field"><span>Date de la session de rattrapage</span><input id="rattrapage-suivi-session-date" type="date" /></label>
+          <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-session-date">Enregistrer la date de session</button><button class="primary-action" type="button" id="prepare-rattrapage-suivi-draft">Préparer le brouillon suivi J+15</button><button class="primary-action" type="button" id="fetch-rattrapage-suivi-responses">Récupérer les réponses J+15</button></div>
+          <p id="rattrapage-suivi-status" class="form-message" role="status" aria-live="polite">Aucun étudiant sélectionné. Choisis un étudiant Rattrapage avant de continuer.</p>
+          <section class="rattrapage-suivi-summary" aria-labelledby="rattrapage-suivi-summary-title">
+            <h3 id="rattrapage-suivi-summary-title">Résumé des réponses J+15</h3>
+            <div id="rattrapage-suivi-summary"></div>
+          </section>
+        </div>
+      </section>
     </main>
-    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="constants/parcours.js" defer></script><script src="database/local-storage-database.js?v=26" defer></script><script src="database/sqlite-adapter.todo.js" defer></script><script src="database/index.js" defer></script><script src="repositories/student-repository.js" defer></script><script src="repositories/prospect-repository.js" defer></script><script src="repositories/settings-repository.js?v=1" defer></script><script src="services/student-service.js" defer></script><script src="services/prospect-service.js" defer></script><script src="services/settings-service.js?v=1" defer></script><script src="services/browser-storage-service.js" defer></script><script src="services/app-data-service.js" defer></script><script src="components/parcours/parcours-page.js?v=20260625-1" defer></script><script src="pages/rattrapage/questionnaire-rattrapage.js?v=1" defer></script>
+    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="constants/parcours.js" defer></script><script src="database/local-storage-database.js?v=27" defer></script><script src="database/sqlite-adapter.todo.js" defer></script><script src="database/index.js" defer></script><script src="repositories/student-repository.js" defer></script><script src="repositories/prospect-repository.js" defer></script><script src="repositories/settings-repository.js?v=2" defer></script><script src="services/student-service.js" defer></script><script src="services/prospect-service.js" defer></script><script src="services/settings-service.js?v=1" defer></script><script src="services/browser-storage-service.js" defer></script><script src="services/app-data-service.js" defer></script><script src="components/parcours/parcours-page.js?v=20260625-1" defer></script><script src="pages/rattrapage/questionnaire-rattrapage.js?v=2" defer></script>
   </body>
 </html>

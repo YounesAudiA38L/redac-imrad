@@ -35,5 +35,7 @@ window.REDAC_IMRAD_PRIVATE_CONFIG = {
     tokenRattrapage: "",
     lienFormsEntreeRattrapage: "",
     sheetIdEntreeRattrapage: "",
+    lienFormsSuiviRattrapage: "",
+    sheetIdSuiviRattrapage: "",
   },
 };

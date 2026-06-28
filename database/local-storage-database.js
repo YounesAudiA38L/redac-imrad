@@ -283,6 +283,8 @@
         ),
         lienFormsEntreeRattrapage: localOrPrivate(rattrapageSettings.lienFormsEntreeRattrapage, rattrapageConfig.lienFormsEntreeRattrapage),
         sheetIdEntreeRattrapage: localOrPrivate(rattrapageSettings.sheetIdEntreeRattrapage, rattrapageConfig.sheetIdEntreeRattrapage),
+        lienFormsSuiviRattrapage: localOrPrivate(rattrapageSettings.lienFormsSuiviRattrapage, rattrapageConfig.lienFormsSuiviRattrapage),
+        sheetIdSuiviRattrapage: localOrPrivate(rattrapageSettings.sheetIdSuiviRattrapage, rattrapageConfig.sheetIdSuiviRattrapage),
       },
     };
   }
@@ -340,14 +342,27 @@
   function saveRattrapageSettings(settings) {
     const database = getDatabase();
     const current = database.settings.rattrapage || {};
-    const endpointRattrapage = String(settings?.endpointRattrapage || settings?.responsesAppsScriptUrl || "").trim();
-    const tokenRattrapage = String(settings?.tokenRattrapage || settings?.token || "").trim();
+    const hasEndpoint = Object.prototype.hasOwnProperty.call(settings || {}, "endpointRattrapage")
+      || Object.prototype.hasOwnProperty.call(settings || {}, "responsesAppsScriptUrl");
+    const hasToken = Object.prototype.hasOwnProperty.call(settings || {}, "tokenRattrapage")
+      || Object.prototype.hasOwnProperty.call(settings || {}, "token");
+    const endpointRattrapage = hasEndpoint
+      ? String(settings?.endpointRattrapage || settings?.responsesAppsScriptUrl || "").trim()
+      : String(current.endpointRattrapage || current.responsesAppsScriptUrl || "").trim();
+    const tokenRattrapage = hasToken
+      ? String(settings?.tokenRattrapage || settings?.token || "").trim()
+      : String(current.tokenRattrapage || current.token || "").trim();
+    const valueOrCurrent = (key) => Object.prototype.hasOwnProperty.call(settings || {}, key)
+      ? String(settings?.[key] || "").trim()
+      : String(current[key] || "").trim();
     database.settings = {
       ...database.settings,
       rattrapage: {
         ...current,
-        lienFormsEntreeRattrapage: String(settings?.lienFormsEntreeRattrapage || "").trim(),
-        sheetIdEntreeRattrapage: String(settings?.sheetIdEntreeRattrapage || "").trim(),
+        lienFormsEntreeRattrapage: valueOrCurrent("lienFormsEntreeRattrapage"),
+        sheetIdEntreeRattrapage: valueOrCurrent("sheetIdEntreeRattrapage"),
+        lienFormsSuiviRattrapage: valueOrCurrent("lienFormsSuiviRattrapage"),
+        sheetIdSuiviRattrapage: valueOrCurrent("sheetIdSuiviRattrapage"),
         endpointRattrapage,
         tokenRattrapage,
         responsesAppsScriptUrl: endpointRattrapage,

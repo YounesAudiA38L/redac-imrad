@@ -9,9 +9,15 @@
     missingFormsLink: "Le lien du questionnaire d’entrée Rattrapage est manquant.",
     missingSheetId: "L'ID Google Sheets des réponses est manquant.",
     noResponses: "Aucune réponse exploitable trouvée pour le questionnaire d’entrée Rattrapage.",
+    missingSuiviFormsLink: "Le lien du questionnaire de suivi J+15 est manquant.",
+    missingSuiviSheetId: "L'ID Google Sheets des réponses J+15 est manquant.",
+    missingSessionDate: "La date de session de rattrapage est manquante.",
+    noSuiviResponses: "Aucune réponse exploitable trouvée pour le suivi J+15 Rattrapage.",
     noStudentSelected: "Aucun étudiant sélectionné. Choisis un étudiant Rattrapage avant de continuer.",
     draftPrepared: "Brouillon du questionnaire d’entrée préparé. À vérifier et envoyer par Audrey.",
+    suiviDraftPrepared: "Brouillon du suivi J+15 préparé. À vérifier et envoyer par Audrey.",
     unmatched: "Aucune fiche Rattrapage correspondante trouvée pour cette réponse.",
+    unmatchedSuivi: "Aucune fiche Rattrapage correspondante trouvée pour cette réponse de suivi J+15.",
   });
   const EMPTY_QUESTIONNAIRE = Object.freeze({
     lienForms: "",
@@ -36,6 +42,21 @@
     reponsesBrutes: null,
     updatedAt: "",
   });
+  const EMPTY_SUIVI_RATTRAPAGE = Object.freeze({
+    lienForms: "",
+    dateSession: "",
+    rappelJ15Envoye: false,
+    rappelJ15EnvoyeLe: "",
+    reponduLe: "",
+    sessionPassee: "",
+    vecuSoutenanceRattrapage: [],
+    impactAccompagnementRattrapage: "",
+    apportsAccompagnementRattrapage: [],
+    temoignage: "",
+    consentementTemoignage: "",
+    reponsesBrutes: null,
+    updatedAt: "",
+  });
   const SUMMARY_FIELDS = [
     ["typeRattrapage", "Type de rattrapage"],
     ["echeanceRattrapage", "Échéance rattrapage"],
@@ -50,6 +71,14 @@
     ["blocages", "Blocages"],
     ["tempsDispo", "Temps disponible"],
     ["attentes", "Attentes"],
+  ];
+  const SUIVI_SUMMARY_FIELDS = [
+    ["sessionPassee", "Session passée"],
+    ["vecuSoutenanceRattrapage", "Ressenti de la soutenance"],
+    ["impactAccompagnementRattrapage", "Impact de l’accompagnement"],
+    ["apportsAccompagnementRattrapage", "Ce qui a le plus aidé"],
+    ["consentementTemoignage", "Consentement témoignage"],
+    ["temoignage", "Témoignage"],
   ];
   const MOTIFS_AXES = [
     { pattern: "methode insuffisante", axis: "methode" },
@@ -73,6 +102,16 @@
     fetchResponses: document.querySelector("#fetch-rattrapage-questionnaire-responses"),
     status: document.querySelector("#rattrapage-questionnaire-status"),
     summary: document.querySelector("#rattrapage-questionnaire-summary"),
+    suiviFormUrl: document.querySelector("#rattrapage-suivi-form-url"),
+    suiviSheetId: document.querySelector("#rattrapage-suivi-sheet-id"),
+    saveSuiviConfig: document.querySelector("#save-rattrapage-suivi-config"),
+    suiviConfigStatus: document.querySelector("#rattrapage-suivi-config-status"),
+    sessionDate: document.querySelector("#rattrapage-suivi-session-date"),
+    saveSessionDate: document.querySelector("#save-rattrapage-session-date"),
+    prepareSuiviDraft: document.querySelector("#prepare-rattrapage-suivi-draft"),
+    fetchSuiviResponses: document.querySelector("#fetch-rattrapage-suivi-responses"),
+    suiviStatus: document.querySelector("#rattrapage-suivi-status"),
+    suiviSummary: document.querySelector("#rattrapage-suivi-summary"),
   };
   if (!elements.studentSelect || !elements.summary) return;
 
@@ -113,6 +152,8 @@
       tokenRattrapage: settings.tokenRattrapage || settings.token || "",
       lienFormsEntreeRattrapage: settings.lienFormsEntreeRattrapage || "",
       sheetIdEntreeRattrapage: settings.sheetIdEntreeRattrapage || "",
+      lienFormsSuiviRattrapage: settings.lienFormsSuiviRattrapage || "",
+      sheetIdSuiviRattrapage: settings.sheetIdSuiviRattrapage || "",
     };
   }
 
@@ -122,6 +163,8 @@
     elements.token.value = settings.tokenRattrapage;
     elements.formUrl.value = settings.lienFormsEntreeRattrapage;
     elements.sheetId.value = settings.sheetIdEntreeRattrapage;
+    if (elements.suiviFormUrl) elements.suiviFormUrl.value = settings.lienFormsSuiviRattrapage;
+    if (elements.suiviSheetId) elements.suiviSheetId.value = settings.sheetIdSuiviRattrapage;
   }
 
   function saveQuestionnaireConfig() {
@@ -133,6 +176,16 @@
     };
     services.saveRattrapageSettings?.(settings);
     setMessage(elements.configStatus, "Configuration du questionnaire d’entrée Rattrapage enregistrée.", "success");
+    return settings;
+  }
+
+  function saveSuiviRattrapageConfig() {
+    const settings = {
+      lienFormsSuiviRattrapage: elements.suiviFormUrl.value.trim() ? validateUrl(elements.suiviFormUrl.value, "Le lien Google Forms du suivi J+15") : "",
+      sheetIdSuiviRattrapage: elements.suiviSheetId.value.trim(),
+    };
+    services.saveRattrapageSettings?.(settings);
+    setMessage(elements.suiviConfigStatus, "Configuration du suivi J+15 Rattrapage enregistrée.", "success");
     return settings;
   }
 
@@ -153,12 +206,36 @@
     };
   }
 
+  function getSuiviRattrapage(student) {
+    const existing = student?.donneesParcours?.suiviRattrapage;
+    const suivi = existing && typeof existing === "object" ? existing : {};
+    return {
+      ...EMPTY_SUIVI_RATTRAPAGE,
+      ...suivi,
+      vecuSoutenanceRattrapage: Array.isArray(suivi.vecuSoutenanceRattrapage) ? suivi.vecuSoutenanceRattrapage : splitList(suivi.vecuSoutenanceRattrapage),
+      apportsAccompagnementRattrapage: Array.isArray(suivi.apportsAccompagnementRattrapage) ? suivi.apportsAccompagnementRattrapage : splitList(suivi.apportsAccompagnementRattrapage),
+      reponsesBrutes: suivi.reponsesBrutes || null,
+    };
+  }
+
   function updateQuestionnaireEntree(student, questionnaire) {
     return services.updateStudent(student.id, {
       donneesParcours: {
         questionnaireEntreeRattrapage: {
           ...getQuestionnaireEntree(student),
           ...questionnaire,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    });
+  }
+
+  function updateSuiviRattrapage(student, suivi) {
+    return services.updateStudent(student.id, {
+      donneesParcours: {
+        suiviRattrapage: {
+          ...getSuiviRattrapage(student),
+          ...suivi,
           updatedAt: new Date().toISOString(),
         },
       },
@@ -305,6 +382,132 @@
     }
   }
 
+  function saveRattrapageSessionDate(student) {
+    if (!student) {
+      setMessage(elements.suiviStatus, UI_MESSAGES.noStudentSelected, "warning");
+      return null;
+    }
+    const dateSession = elements.sessionDate.value.trim();
+    if (!dateSession) {
+      setMessage(elements.suiviStatus, UI_MESSAGES.missingSessionDate, "warning");
+      return null;
+    }
+    const updated = updateSuiviRattrapage(student, { dateSession });
+    renderSuiviJ15Summary(updated);
+    setMessage(elements.suiviStatus, "Date de session Rattrapage enregistrée.", "success");
+    return updated;
+  }
+
+  async function prepareSuiviJ15Draft(student) {
+    if (!student) {
+      setMessage(elements.suiviStatus, UI_MESSAGES.noStudentSelected, "warning");
+      return;
+    }
+    const config = getRattrapageSettings();
+    const suivi = getSuiviRattrapage(student);
+    const dateSession = elements.sessionDate.value.trim() || suivi.dateSession;
+    if (!config.endpointRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingAppsScriptUrl, "warning");
+    if (!config.tokenRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingToken, "warning");
+    if (!config.lienFormsSuiviRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingSuiviFormsLink, "warning");
+    if (!dateSession) return setMessage(elements.suiviStatus, UI_MESSAGES.missingSessionDate, "warning");
+    if (!normalizeEmail(student.email)) return setMessage(elements.suiviStatus, UI_MESSAGES.missingStudentEmail, "warning");
+
+    const payload = {
+      action: "envoyer_questionnaire",
+      email: student.email,
+      prenom: student.prenom || "",
+      nom: student.nom || "",
+      lienForms: config.lienFormsSuiviRattrapage,
+      parcours: "rattrapage",
+      typeQuestionnaire: "suivi_j15_rattrapage",
+      token: config.tokenRattrapage,
+    };
+    const url = buildRequestUrl(config.endpointRattrapage, "envoyer_questionnaire", config.tokenRattrapage, payload);
+    elements.prepareSuiviDraft.disabled = true;
+    setMessage(elements.suiviStatus, "Préparation du brouillon de suivi J+15 en cours.", "loading");
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      const data = await response.json();
+      if (data.success === false) throw new Error(data.error || "Apps Script a signalé une erreur.");
+      if (!response.ok || data.success !== true) throw new Error("Apps Script n’a pas confirmé la préparation du brouillon.");
+      const updated = updateSuiviRattrapage(student, {
+        lienForms: config.lienFormsSuiviRattrapage,
+        dateSession,
+        rappelJ15Envoye: true,
+        rappelJ15EnvoyeLe: data.envoyeLe || data.sendDraftCreatedAt || new Date().toISOString(),
+      });
+      renderSuiviJ15Summary(updated);
+      setMessage(elements.suiviStatus, UI_MESSAGES.suiviDraftPrepared, "success");
+    } catch (error) {
+      setMessage(elements.suiviStatus, `La préparation du brouillon a échoué : ${error.message}`, "error");
+    } finally {
+      elements.prepareSuiviDraft.disabled = false;
+    }
+  }
+
+  function normalizeSuiviJ15Response(rawResponse) {
+    const raw = rawResponse && typeof rawResponse === "object" ? rawResponse : {};
+    return {
+      prenom: pickByLabel(raw, ["prenom", "prénom"]),
+      nom: pickByLabel(raw, ["nom", "nom de famille"]),
+      email: String(pickByLabel(raw, ["email", "adresse mail", "adresse e-mail", "mail"]) || "").trim(),
+      reponduLe: pickByLabel(raw, ["timestamp", "horodateur", "date de réponse", "receivedAt"]) || new Date().toISOString(),
+      sessionPassee: pickByLabel(raw, ["session passee", "session passée", "rattrapage passe", "rattrapage passé"]),
+      vecuSoutenanceRattrapage: splitList(pickByLabel(raw, ["ressenti de la soutenance", "vecu soutenance", "vécu soutenance", "soutenance rattrapage"])),
+      impactAccompagnementRattrapage: pickByLabel(raw, ["impact de l accompagnement", "impact accompagnement", "accompagnement rattrapage"]),
+      apportsAccompagnementRattrapage: splitList(pickByLabel(raw, ["ce qui a le plus aide", "ce qui a le plus aidé", "apports accompagnement", "plus aide"])),
+      temoignage: pickByLabel(raw, ["temoignage", "témoignage"]),
+      consentementTemoignage: pickByLabel(raw, ["consentement temoignage", "consentement témoignage", "autorisation temoignage", "accord temoignage"]),
+      reponsesBrutes: raw,
+    };
+  }
+
+  function associateSuiviJ15ResponseToStudent(response) {
+    const students = services.getStudentsByParcours("rattrapage");
+    const email = normalizeEmail(response.email);
+    let student = email ? students.find((item) => normalizeEmail(item.email) === email) : null;
+    if (!student) {
+      const responseName = normalizeSearchValue(`${response.prenom || ""} ${response.nom || ""}`);
+      if (responseName) student = students.find((item) => getNameKey(item) === responseName);
+    }
+    if (!student) return { student: null, message: UI_MESSAGES.unmatchedSuivi };
+    return { student: updateSuiviRattrapage(student, response), message: "" };
+  }
+
+  async function fetchSuiviJ15Responses() {
+    const config = getRattrapageSettings();
+    if (!config.endpointRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingAppsScriptUrl, "warning");
+    if (!config.tokenRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingToken, "warning");
+    if (!config.sheetIdSuiviRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingSuiviSheetId, "warning");
+
+    const payload = {
+      action: "recuperer_reponses",
+      sheetId: config.sheetIdSuiviRattrapage,
+      token: config.tokenRattrapage,
+      typeQuestionnaire: "suivi_j15_rattrapage",
+    };
+    const url = buildRequestUrl(config.endpointRattrapage, "recuperer_reponses", config.tokenRattrapage, payload);
+    elements.fetchSuiviResponses.disabled = true;
+    setMessage(elements.suiviStatus, "Récupération des réponses J+15 en cours.", "loading");
+    try {
+      const fetchResponse = await fetch(url, { cache: "no-store" });
+      const data = await fetchResponse.json();
+      if (data.success === false) throw new Error(data.error || "Apps Script a signalé une erreur.");
+      const responses = data.responses || data.reponses || data.data || [];
+      if (!fetchResponse.ok || !Array.isArray(responses) || responses.length === 0) throw new Error(UI_MESSAGES.noSuiviResponses);
+      const results = responses.map((response) => associateSuiviJ15ResponseToStudent(normalizeSuiviJ15Response(response)));
+      const associated = results.filter((result) => result.student).length;
+      const unmatched = results.length - associated;
+      const selected = getSelectedRattrapageStudent();
+      if (selected) renderSuiviJ15Summary(services.getStudentById(selected.id));
+      setMessage(elements.suiviStatus, `${associated} réponse(s) J+15 associée(s). ${unmatched} réponse(s) non associée(s).`, associated ? "success" : "warning");
+    } catch (error) {
+      setMessage(elements.suiviStatus, error.message, "error");
+    } finally {
+      elements.fetchSuiviResponses.disabled = false;
+    }
+  }
+
   function formatValue(value) {
     if (Array.isArray(value)) return value.length ? value.join("\n") : "Non renseigné";
     return String(value || "").trim() || "Non renseigné";
@@ -342,6 +545,41 @@
     elements.summary.append(list);
   }
 
+  function renderSuiviJ15Summary(student) {
+    if (!elements.suiviSummary) return;
+    elements.suiviSummary.textContent = "";
+    if (!student) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = UI_MESSAGES.noStudentSelected;
+      elements.suiviSummary.append(empty);
+      if (elements.sessionDate) elements.sessionDate.value = "";
+      return;
+    }
+    const suivi = getSuiviRattrapage(student);
+    if (elements.sessionDate) elements.sessionDate.value = suivi.dateSession || "";
+    const hasResponse = Boolean(suivi.reponduLe || suivi.reponsesBrutes);
+    if (!hasResponse) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "Aucune réponse au suivi J+15 Rattrapage n’est encore associée à cet étudiant.";
+      elements.suiviSummary.append(empty);
+      return;
+    }
+    const list = document.createElement("dl");
+    list.className = "rattrapage-suivi-summary-grid";
+    SUIVI_SUMMARY_FIELDS.forEach(([key, label]) => {
+      const item = document.createElement("div");
+      const term = document.createElement("dt");
+      const detail = document.createElement("dd");
+      term.textContent = label;
+      detail.textContent = formatValue(suivi[key]);
+      item.append(term, detail);
+      list.append(item);
+    });
+    elements.suiviSummary.append(list);
+  }
+
   function renderRattrapageStudentSelector(selectedId = elements.studentSelect.value) {
     const students = services.getStudentsByParcours("rattrapage")
       .slice()
@@ -361,7 +599,9 @@
     elements.studentSelect.disabled = students.length === 0;
     const selected = getSelectedRattrapageStudent();
     renderQuestionnaireEntreeSummary(selected);
+    renderSuiviJ15Summary(selected);
     setMessage(elements.status, selected ? "" : UI_MESSAGES.noStudentSelected, selected ? "neutral" : "warning");
+    setMessage(elements.suiviStatus, selected ? "" : UI_MESSAGES.noStudentSelected, selected ? "neutral" : "warning");
   }
 
   function applyMotifsRefusSuggestion(student, questionnaireData) {
@@ -394,13 +634,21 @@
   elements.saveConfig.addEventListener("click", () => {
     try { saveQuestionnaireConfig(); } catch (error) { setMessage(elements.configStatus, error.message, "error"); }
   });
+  elements.saveSuiviConfig.addEventListener("click", () => {
+    try { saveSuiviRattrapageConfig(); } catch (error) { setMessage(elements.suiviConfigStatus, error.message, "error"); }
+  });
   elements.studentSelect.addEventListener("change", () => {
     const student = getSelectedRattrapageStudent();
     renderQuestionnaireEntreeSummary(student);
+    renderSuiviJ15Summary(student);
     setMessage(elements.status, student ? "" : UI_MESSAGES.noStudentSelected, student ? "neutral" : "warning");
+    setMessage(elements.suiviStatus, student ? "" : UI_MESSAGES.noStudentSelected, student ? "neutral" : "warning");
   });
   elements.prepareDraft.addEventListener("click", () => prepareQuestionnaireEntreeDraft(getSelectedRattrapageStudent()));
   elements.fetchResponses.addEventListener("click", fetchQuestionnaireEntreeResponses);
+  elements.saveSessionDate.addEventListener("click", () => saveRattrapageSessionDate(getSelectedRattrapageStudent()));
+  elements.prepareSuiviDraft.addEventListener("click", () => prepareSuiviJ15Draft(getSelectedRattrapageStudent()));
+  elements.fetchSuiviResponses.addEventListener("click", fetchSuiviJ15Responses);
   global.addEventListener("redac:parcours-rendered", (event) => {
     if (event.detail?.parcours === "rattrapage") renderRattrapageStudentSelector();
   });
@@ -408,12 +656,20 @@
   global.QuestionnaireEntreeRattrapage = Object.freeze({
     getSelectedRattrapageStudent,
     getQuestionnaireEntree,
+    getSuiviRattrapage,
     saveQuestionnaireConfig,
+    saveSuiviRattrapageConfig,
+    saveRattrapageSessionDate,
     prepareQuestionnaireEntreeDraft,
+    prepareSuiviJ15Draft,
     fetchQuestionnaireEntreeResponses,
+    fetchSuiviJ15Responses,
     normalizeRattrapageResponse,
+    normalizeSuiviJ15Response,
     associateRattrapageResponseToStudent,
+    associateSuiviJ15ResponseToStudent,
     renderQuestionnaireEntreeSummary,
+    renderSuiviJ15Summary,
     renderRattrapageStudentSelector,
     applyMotifsRefusSuggestion,
   });
