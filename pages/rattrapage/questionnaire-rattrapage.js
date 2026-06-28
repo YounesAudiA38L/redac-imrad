@@ -107,7 +107,8 @@
     suiviSheetId: document.querySelector("#rattrapage-suivi-sheet-id"),
     saveSuiviConfig: document.querySelector("#save-rattrapage-suivi-config"),
     suiviConfigStatus: document.querySelector("#rattrapage-suivi-config-status"),
-    sessionDate: document.querySelector("#rattrapage-suivi-session-date"),
+    sessionDate: document.querySelector("[data-rattrapage-date-session-input]"),
+    sessionDateDisplay: document.querySelector("[data-rattrapage-date-session-display]"),
     saveSessionDate: document.querySelector("#save-rattrapage-session-date"),
     prepareSuiviDraft: document.querySelector("#prepare-rattrapage-suivi-draft"),
     fetchSuiviResponses: document.querySelector("#fetch-rattrapage-suivi-responses"),
@@ -144,6 +145,31 @@
       throw new Error(`${label} doit être une URL de déploiement Apps Script.`);
     }
     return url.toString();
+  }
+
+  function isValidIsoDate(dateIso) {
+    const match = String(dateIso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    return !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  }
+
+  function formatDateFr(dateIso) {
+    const trimmed = String(dateIso || "").trim();
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return "";
+    if (!isValidIsoDate(trimmed)) return "";
+    return `${match[3]}/${match[2]}/${match[1]}`;
+  }
+
+  function renderSessionDateDisplay(dateSession) {
+    if (!elements.sessionDateDisplay) return;
+    const formattedDate = formatDateFr(dateSession);
+    elements.sessionDateDisplay.textContent = formattedDate ? `Date enregistrée : ${formattedDate}` : "";
+    elements.sessionDateDisplay.hidden = !formattedDate;
   }
 
   function getRattrapageSettings() {
@@ -398,9 +424,14 @@
       setMessage(elements.suiviStatus, UI_MESSAGES.missingSessionDate, "warning");
       return null;
     }
+    if (!isValidIsoDate(dateSession)) {
+      setMessage(elements.suiviStatus, "Date invalide.", "warning");
+      return null;
+    }
     const updated = updateSuiviRattrapage(student, { dateSession });
     renderSuiviJ15Summary(updated);
-    setMessage(elements.suiviStatus, "Date de session Rattrapage enregistrée.", "success");
+    renderSessionDateDisplay(dateSession);
+    setMessage(elements.suiviStatus, `Date de session Rattrapage enregistrée : ${formatDateFr(dateSession)}.`, "success");
     return updated;
   }
 
@@ -411,11 +442,13 @@
     }
     const config = getRattrapageSettings();
     const suivi = getSuiviRattrapage(student);
-    const dateSession = elements.sessionDate.value.trim() || suivi.dateSession;
+    const dateSessionInput = elements.sessionDate.value.trim();
+    const dateSession = dateSessionInput || suivi.dateSession;
     if (!config.endpointRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingAppsScriptUrl, "warning");
     if (!config.tokenRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingToken, "warning");
     if (!config.lienFormsSuiviRattrapage) return setMessage(elements.suiviStatus, UI_MESSAGES.missingSuiviFormsLink, "warning");
     if (!dateSession) return setMessage(elements.suiviStatus, UI_MESSAGES.missingSessionDate, "warning");
+    if (!isValidIsoDate(dateSession)) return setMessage(elements.suiviStatus, "Date invalide.", "warning");
     if (!normalizeEmail(student.email)) return setMessage(elements.suiviStatus, UI_MESSAGES.missingStudentEmail, "warning");
 
     const payload = {
@@ -560,10 +593,25 @@
       empty.textContent = UI_MESSAGES.noStudentSelected;
       elements.suiviSummary.append(empty);
       if (elements.sessionDate) elements.sessionDate.value = "";
+      renderSessionDateDisplay("");
       return;
     }
     const suivi = getSuiviRattrapage(student);
-    if (elements.sessionDate) elements.sessionDate.value = suivi.dateSession || "";
+    if (elements.sessionDate) elements.sessionDate.value = isValidIsoDate(suivi.dateSession) ? suivi.dateSession : "";
+    renderSessionDateDisplay(suivi.dateSession);
+    const formattedSessionDate = formatDateFr(suivi.dateSession);
+    if (formattedSessionDate) {
+      const sessionDate = document.createElement("dl");
+      sessionDate.className = "rattrapage-suivi-summary-grid";
+      const item = document.createElement("div");
+      const term = document.createElement("dt");
+      const detail = document.createElement("dd");
+      term.textContent = "Date de session rattrapage";
+      detail.textContent = formattedSessionDate;
+      item.append(term, detail);
+      sessionDate.append(item);
+      elements.suiviSummary.append(sessionDate);
+    }
     const hasResponse = Boolean(suivi.reponduLe || suivi.reponsesBrutes);
     if (!hasResponse) {
       const empty = document.createElement("p");

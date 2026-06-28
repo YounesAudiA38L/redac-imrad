@@ -574,6 +574,32 @@ function parseDateValue(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function isValidIsoDate(dateIso) {
+  const match = String(dateIso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function formatDateFr(dateIso) {
+  const frenchMatch = String(dateIso || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (frenchMatch) {
+    const day = Number(frenchMatch[1]);
+    const month = Number(frenchMatch[2]);
+    const year = Number(frenchMatch[3]);
+    const date = new Date(year, month - 1, day);
+    if (Number.isNaN(date.getTime()) || date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+    return dateIso;
+  }
+  const match = String(dateIso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  if (!isValidIsoDate(dateIso)) return "";
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
 function getCalendarDayNumber(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
@@ -586,9 +612,9 @@ function getDaysSince(date) {
   return dateDay === null || todayDay === null ? null : todayDay - dateDay;
 }
 
-function formatNotificationTemplate(template, student, date) {
+function formatNotificationTemplate(template, student, dateIso) {
   const name = `${student.prenom || ""} ${student.nom || ""}`.trim() || "Étudiant sans nom";
-  const formattedDate = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  const formattedDate = formatDateFr(dateIso);
   return template.replace("[Prénom Nom]", name).replace("[date]", formattedDate);
 }
 
@@ -695,7 +721,7 @@ function createRattrapageJ15Notification(student) {
   const suivi = getRattrapageSuivi(student);
   const dateSession = parseDateValue(suivi.dateSession);
   if (!dateSession) return null;
-  const text = formatNotificationTemplate(NOTIFICATION_MESSAGE_TEMPLATES.rattrapageJ15, student, dateSession);
+  const text = formatNotificationTemplate(NOTIFICATION_MESSAGE_TEMPLATES.rattrapageJ15, student, suivi.dateSession);
   return {
     id: `rattrapage-j15-${student.id}`,
     type: "rattrapage-j15",

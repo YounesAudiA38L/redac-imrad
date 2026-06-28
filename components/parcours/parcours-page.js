@@ -217,6 +217,26 @@
     list.append(row);
   }
 
+  function isValidIsoDate(value) {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    return !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  }
+
+  function formatDateFr(value) {
+    const trimmed = String(value || "").trim();
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) return isValidIsoDate(trimmed) ? `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}` : "";
+    if (!trimmed) return "";
+    const date = new Date(trimmed);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
   function ensureParcoursStatus() {
     if (parcoursStatus) return parcoursStatus;
     parcoursStatus = document.createElement("p");
@@ -355,10 +375,13 @@
     header.append(category, name, createStatusBadges(student));
 
     const details = document.createElement("dl");
-    addDetail(details, "Début d’accompagnement", student.dateDebut);
+    addDetail(details, "Début d’accompagnement", formatDateFr(student.dateDebut));
     addDetail(details, "Statut", student.statut);
     addDetail(details, "IFMK", student.ifmk);
     addDetail(details, "Thématique", student.thematiqueMemoire);
+    if (student.parcours === "rattrapage") {
+      addDetail(details, "Session rattrapage", formatDateFr(student.donneesParcours?.suiviRattrapage?.dateSession));
+    }
     addDetail(details, "Mémoire importé", student.memoireImporte?.nom || "Aucun fichier");
 
     const actions = document.createElement("div");
@@ -396,9 +419,7 @@
 
   function formatDate(value) {
     if (!value) return "À renseigner";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString("fr-FR");
+    return formatDateFr(value) || value;
   }
 
   function createArchivedCard(student) {
