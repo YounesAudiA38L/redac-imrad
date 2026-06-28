@@ -285,6 +285,8 @@
         sheetIdEntreeRattrapage: localOrPrivate(rattrapageSettings.sheetIdEntreeRattrapage, rattrapageConfig.sheetIdEntreeRattrapage),
         lienFormsSuiviRattrapage: localOrPrivate(rattrapageSettings.lienFormsSuiviRattrapage, rattrapageConfig.lienFormsSuiviRattrapage),
         sheetIdSuiviRattrapage: localOrPrivate(rattrapageSettings.sheetIdSuiviRattrapage, rattrapageConfig.sheetIdSuiviRattrapage),
+        templateSyntheseRepriseId: localOrPrivate(rattrapageSettings.templateSyntheseRepriseId, rattrapageConfig.templateSyntheseRepriseId),
+        dossierEtudiantsDriveId: localOrPrivate(rattrapageSettings.dossierEtudiantsDriveId, rattrapageConfig.dossierEtudiantsDriveId),
       },
     };
   }
@@ -363,6 +365,8 @@
         sheetIdEntreeRattrapage: valueOrCurrent("sheetIdEntreeRattrapage"),
         lienFormsSuiviRattrapage: valueOrCurrent("lienFormsSuiviRattrapage"),
         sheetIdSuiviRattrapage: valueOrCurrent("sheetIdSuiviRattrapage"),
+        templateSyntheseRepriseId: valueOrCurrent("templateSyntheseRepriseId"),
+        dossierEtudiantsDriveId: valueOrCurrent("dossierEtudiantsDriveId"),
         endpointRattrapage,
         tokenRattrapage,
         responsesAppsScriptUrl: endpointRattrapage,

@@ -4125,3 +4125,42 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* === Synthèse reprise Rattrapage === */
+.rattrapage-synthese-config-grid,
+.rattrapage-synthese-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rattrapage-synthese-student-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.rattrapage-synthese-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.rattrapage-synthese-result {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.rattrapage-synthese-result > p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .rattrapage-synthese-config-grid,
+  .rattrapage-synthese-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rattrapage-synthese-grid .full-width {
+    grid-column: auto;
+  }
+}

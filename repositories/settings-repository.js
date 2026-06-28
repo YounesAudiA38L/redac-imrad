@@ -39,6 +39,8 @@
           sheetIdEntreeRattrapage: valueOrCurrent("sheetIdEntreeRattrapage"),
           lienFormsSuiviRattrapage: valueOrCurrent("lienFormsSuiviRattrapage"),
           sheetIdSuiviRattrapage: valueOrCurrent("sheetIdSuiviRattrapage"),
+          templateSyntheseRepriseId: valueOrCurrent("templateSyntheseRepriseId"),
+          dossierEtudiantsDriveId: valueOrCurrent("dossierEtudiantsDriveId"),
           endpointRattrapage: endpointRattrapage || current.endpointRattrapage || current.responsesAppsScriptUrl || "",
           tokenRattrapage: tokenRattrapage || current.tokenRattrapage || current.token || "",
           responsesAppsScriptUrl: endpointRattrapage || current.endpointRattrapage || current.responsesAppsScriptUrl || "",

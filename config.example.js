@@ -37,5 +37,7 @@ window.REDAC_IMRAD_PRIVATE_CONFIG = {
     sheetIdEntreeRattrapage: "",
     lienFormsSuiviRattrapage: "",
     sheetIdSuiviRattrapage: "",
+    templateSyntheseRepriseId: "",
+    dossierEtudiantsDriveId: "",
   },
 };
