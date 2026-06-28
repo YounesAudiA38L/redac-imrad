@@ -1,8 +1,19 @@
 (function initializeProspects(global) {
+  const browserStorage = global.RedacServices.browserStorage;
   const RELANCE_ENDPOINT_KEY = "redacImrad.prospects.relanceEndpoint";
   const RELANCE_TOKEN_KEY = "redacImrad.prospects.relanceToken";
   const RESPONSES_ENDPOINT_KEY = "redacImrad.prospects.questionnaireResponses.endpoint";
   const RESPONSES_TOKEN_KEY = "redacImrad.prospects.questionnaireResponses.token";
+  const UI_MESSAGES = Object.freeze({
+    prospectEmpty: "Aucun prospect pour le moment. Commence par ajouter une personne intéressée.",
+    questionnaireNotSent: "Questionnaire pas encore envoyé. Prépare un brouillon depuis la fiche.",
+    prospectConverted: "Prospect transformé en étudiant. La fiche a été créée dans l'onglet correspondant.",
+    modelSaved: "Modèle enregistré. Il sera utilisé pour les prochains envois.",
+    modelRestored: "Modèle restauré. Le texte par défaut a été rétabli.",
+    missingAppsScriptUrl: "L'URL Apps Script n'est pas configurée. Rends-toi dans les paramètres pour la renseigner.",
+    missingToken: "Le token de connexion est manquant. Vérifie la configuration dans les paramètres.",
+    googleNotConfigured: "La connexion à Google n'est pas encore configurée. Renseigne l'URL et le token dans les paramètres.",
+  });
 
   const DEFAULT_TEMPLATES = Object.freeze({
     questionnaire: {
@@ -75,9 +86,9 @@ Audrey`,
     cancelRelances: document.querySelector("#cancel-prospect-relances"),
   };
 
-  if (!global.RedacStorage || !elements.list) return;
+  if (!global.RedacServices.appData || !elements.list) return;
 
-  const storage = global.RedacStorage;
+  const storage = global.RedacServices.appData;
   let convertingProspectId = null;
   let pendingRelancePlan = null;
   let archivesVisible = false;
@@ -93,7 +104,7 @@ Audrey`,
     archive: "Archivé",
   };
   const questionnaireStatusLabels = {
-    "a-envoyer": "Questionnaire à envoyer",
+    "a-envoyer": UI_MESSAGES.questionnaireNotSent,
     envoye: "Questionnaire envoyé",
     repondu: "Questionnaire répondu",
   };
@@ -622,7 +633,7 @@ Audrey`,
       empty.className = "empty-state";
       empty.textContent = storage.getProspects().length
         ? "Aucun prospect actif pour le moment."
-        : "Aucun prospect enregistré pour le moment.";
+        : UI_MESSAGES.prospectEmpty;
       elements.list.append(empty);
       return;
     }
@@ -653,7 +664,7 @@ Audrey`,
       pills.className = "prospect-followup-pills";
       pills.append(
         createFollowupPill(prospectStatusLabels[status] || "Nouveau", `prospect-${status}`),
-        createFollowupPill(questionnaireStatusLabels[prospect.questionnaireStatut] || "Questionnaire à envoyer", `questionnaire-${prospect.questionnaireStatut || "a-envoyer"}`),
+        createFollowupPill(questionnaireStatusLabels[prospect.questionnaireStatut] || UI_MESSAGES.questionnaireNotSent, `questionnaire-${prospect.questionnaireStatut || "a-envoyer"}`),
         createFollowupPill(`Réponse : ${prospect.questionnaireRepondu ? "oui" : "non"}`, prospect.questionnaireRepondu ? "response-yes" : "response-no"),
       );
       if (!email) pills.append(createFollowupPill("Email manquant", "email-missing"));
@@ -668,10 +679,10 @@ Audrey`,
         "secondary-action",
       ));
       actions.append(
-        createActionButton("Envoyer questionnaire", "send-questionnaire", "primary-action", !email || prospect.questionnaireRepondu === true),
-        createActionButton("Envoyer relance", "send-relance", "secondary-action", !isProspectToRelance(prospect)),
+        createActionButton("Préparer le questionnaire", "send-questionnaire", "primary-action", !email || prospect.questionnaireRepondu === true),
+        createActionButton("Préparer la relance", "send-relance", "secondary-action", !isProspectToRelance(prospect)),
         createActionButton("Transformer en étudiant", "convert", "primary-action"),
-        createActionButton("Archiver", "archive", "secondary-action"),
+        createActionButton("Archiver", "archive", "destructive-action"),
       );
 
       card.append(main);
@@ -710,9 +721,7 @@ Audrey`,
     if (status === "transforme") {
       const transformedNote = document.createElement("p");
       transformedNote.className = "prospect-archive-note";
-      transformedNote.textContent = linkedStudentId
-        ? "Prospect transformé en étudiant. Étudiant créé."
-        : "Prospect transformé en étudiant.";
+      transformedNote.textContent = UI_MESSAGES.prospectConverted;
       content.append(heading, details, transformedNote);
     } else {
       content.append(heading, details);
@@ -742,7 +751,7 @@ Audrey`,
       actions.append(linkedStudent);
     }
 
-    actions.append(createActionButton("Supprimer définitivement", "delete-archive", "danger-action archive-delete-action"));
+    actions.append(createActionButton("Supprimer définitivement", "delete-archive", "destructive-action archive-delete-action"));
     card.append(content, actions);
     if (expandedResponseProspectIds.has(prospect.id)) {
       card.append(createQuestionnaireResponsePanel(prospect));
@@ -802,7 +811,8 @@ Audrey`,
     const endpoint = validateAppsScriptUrl(storage.getProspectsMailEndpoint());
     const token = storage.getProspectsMailToken().trim();
     if (!formUrl) throw new Error("Enregistrez d’abord l’URL Google Forms prospects.");
-    if (!endpoint || !token) throw new Error("Renseignez une URL Apps Script valide et son token.");
+    if (!endpoint) throw new Error(UI_MESSAGES.missingAppsScriptUrl);
+    if (!token) throw new Error(UI_MESSAGES.missingToken);
     return { formUrl, endpoint, token };
   }
 
@@ -866,6 +876,8 @@ Audrey`,
         setMessage(elements.actionStatus, `L’envoi de la relance a échoué : ${error.message}`, "error");
       }
     } else if (action === "archive") {
+      const confirmed = window.confirm("Confirmer l’archivage de ce dossier ?");
+      if (!confirmed) return;
       storage.archiveProspect(prospect.id);
       setMessage(elements.actionStatus, "Prospect archivé.", "success");
     } else if (action === "restore-archive") {
@@ -876,7 +888,7 @@ Audrey`,
       });
       setMessage(elements.archivesStatus || elements.actionStatus, "Prospect restauré.", "success");
     } else if (action === "delete-archive") {
-      const confirmed = window.confirm("Supprimer définitivement ce prospect ? Cette action est irréversible.");
+      const confirmed = window.confirm("Supprimer définitivement cet élément ? Cette action est irréversible.");
       if (!confirmed) return;
       const hadLinkedStudent = Boolean(prospect.studentId || prospect.convertedStudentId);
       storage.deleteProspect(prospect.id);
@@ -892,7 +904,7 @@ Audrey`,
         || normalizeProspectParcours(getProspectParcoursPressenti(prospect));
       if (parcoursLabels[parcours]) {
         storage.convertProspectToStudent(prospect.id, { parcours });
-        setMessage(elements.actionStatus, "Prospect transformé en étudiant. Les informations du questionnaire ont été reprises dans la fiche.", "success");
+        setMessage(elements.actionStatus, UI_MESSAGES.prospectConverted, "success");
       } else {
         convertingProspectId = prospect.id;
         setMessage(elements.actionStatus, "Choisissez le parcours étudiant avant la conversion.", "warning");
@@ -906,7 +918,7 @@ Audrey`,
       storage.updateProspect(prospect.id, { parcoursValide: parcours });
       storage.convertProspectToStudent(prospect.id, { parcours });
       convertingProspectId = null;
-      setMessage(elements.actionStatus, "Prospect transformé en étudiant. Les informations du questionnaire ont été reprises dans la fiche.", "success");
+      setMessage(elements.actionStatus, UI_MESSAGES.prospectConverted, "success");
     } else if (action === "cancel-convert") {
       convertingProspectId = null;
     }
@@ -995,7 +1007,7 @@ Audrey`,
     const endpoint = validateAppsScriptUrl(elements.mailEndpoint.value);
     const token = elements.mailToken.value.trim();
     if (!endpoint || !token) {
-      setMessage(elements.mailConnectionStatus, "Renseignez une URL Apps Script valide et son token.", "error");
+      setMessage(elements.mailConnectionStatus, !endpoint ? UI_MESSAGES.missingAppsScriptUrl : UI_MESSAGES.missingToken, "error");
       return;
     }
     storage.saveProspectsMailEndpoint(endpoint);
@@ -1008,7 +1020,7 @@ Audrey`,
     const endpoint = validateAppsScriptUrl(elements.responsesEndpoint.value);
     const token = elements.responsesToken.value.trim();
     if (!endpoint || !token) {
-      setMessage(elements.responsesConnectionStatus, "Renseignez une URL Apps Script valide et son token.", "error");
+      setMessage(elements.responsesConnectionStatus, !endpoint ? UI_MESSAGES.missingAppsScriptUrl : UI_MESSAGES.missingToken, "error");
       return;
     }
     storage.saveProspectsResponsesEndpoint(endpoint);
@@ -1094,7 +1106,7 @@ Audrey`,
     const endpoint = validateAppsScriptUrl(storage.getProspectsResponsesEndpoint());
     const token = storage.getProspectsResponsesToken().trim();
     if (!endpoint || !token) {
-      setMessage(elements.responsesSyncStatus, "Renseignez une URL Apps Script valide et son token pour les réponses.", "error");
+      setMessage(elements.responsesSyncStatus, !endpoint ? UI_MESSAGES.missingAppsScriptUrl : UI_MESSAGES.missingToken, "error");
       return;
     }
 
@@ -1173,11 +1185,11 @@ Audrey`,
     const endpoint = validateAppsScriptUrl(elements.relanceEndpoint.value);
     const token = elements.relanceToken.value.trim();
     if (!endpoint || !token) {
-      setMessage(elements.relanceConnectionStatus, "Renseignez une URL Apps Script valide et son token.", "error");
+      setMessage(elements.relanceConnectionStatus, !endpoint ? UI_MESSAGES.missingAppsScriptUrl : UI_MESSAGES.missingToken, "error");
       return;
     }
-    localStorage.setItem(RELANCE_ENDPOINT_KEY, endpoint);
-    localStorage.setItem(RELANCE_TOKEN_KEY, token);
+    browserStorage.setItem(RELANCE_ENDPOINT_KEY, endpoint);
+    browserStorage.setItem(RELANCE_TOKEN_KEY, token);
     elements.relanceEndpoint.value = endpoint;
     setMessage(elements.relanceConnectionStatus, "La connexion Apps Script de relance a été enregistrée.", "success");
   }
@@ -1208,7 +1220,7 @@ Audrey`,
       return;
     }
     storage.saveProspectsMailTemplate(type, { objet, corps, subject: objet, body: corps });
-    setMessage(inputs.status, "Mail sauvegardé.", "success");
+    setMessage(inputs.status, UI_MESSAGES.modelSaved, "success");
   }
 
   function resetTemplate(type) {
@@ -1222,7 +1234,7 @@ Audrey`,
       subject: template.objet,
       body: template.corps,
     });
-    setMessage(inputs.status, "Modèle par défaut rétabli.", "success");
+    setMessage(inputs.status, UI_MESSAGES.modelRestored, "success");
   }
 
   function toggleTemplateEditor(button) {
@@ -1245,16 +1257,17 @@ Audrey`,
 
   function getRelanceConfiguration() {
     const endpoint = validateAppsScriptUrl(
-      localStorage.getItem(RELANCE_ENDPOINT_KEY)
+      browserStorage.getItem(RELANCE_ENDPOINT_KEY)
       || storage.getProspectsMailEndpoint(),
     );
     const token = String(
-      localStorage.getItem(RELANCE_TOKEN_KEY)
+      browserStorage.getItem(RELANCE_TOKEN_KEY)
       || storage.getProspectsMailToken(),
     ).trim();
     const formUrl = validateHttpsUrl(storage.getProspectsFormUrl());
     if (!formUrl) throw new Error("Enregistrez d’abord l’URL Google Forms prospects.");
-    if (!endpoint || !token) throw new Error("Connexion Apps Script de relance à configurer.");
+    if (!endpoint) throw new Error(UI_MESSAGES.missingAppsScriptUrl);
+    if (!token) throw new Error(UI_MESSAGES.missingToken);
     return { endpoint, token };
   }
 
@@ -1312,7 +1325,7 @@ Audrey`,
       return;
     }
     elements.relanceConfirmationSummary.textContent = `Vous allez envoyer ${plan.eligible.length} relance(s) :`;
-    elements.confirmRelances.textContent = `Envoyer ${plan.eligible.length} relance(s) ?`;
+    elements.confirmRelances.textContent = `Préparer ${plan.eligible.length} relance(s) ?`;
     elements.relanceConfirmation.hidden = false;
     setMessage(elements.relanceStatus, "Vérifiez la liste avant de confirmer l’envoi des relances.", "warning");
   }
@@ -1365,24 +1378,24 @@ Audrey`,
     elements.formUrl.value = storage.getProspectsFormUrl();
     const storedMailEndpoint = storage.getProspectsMailEndpoint();
     const storedMailToken = storage.getProspectsMailToken();
-    const legacyMailEndpoint = localStorage.getItem("redacImrad.prospects.questionnaireSend.endpoint") || "";
-    const legacyMailToken = localStorage.getItem("redacImrad.prospects.questionnaireSend.token") || "";
+    const legacyMailEndpoint = browserStorage.getItem("redacImrad.prospects.questionnaireSend.endpoint") || "";
+    const legacyMailToken = browserStorage.getItem("redacImrad.prospects.questionnaireSend.token") || "";
     elements.mailEndpoint.value = storedMailEndpoint || legacyMailEndpoint;
     elements.mailToken.value = storedMailToken || legacyMailToken;
     if (!storedMailEndpoint && validateAppsScriptUrl(legacyMailEndpoint)) storage.saveProspectsMailEndpoint(validateAppsScriptUrl(legacyMailEndpoint));
     if (!storedMailToken && legacyMailToken.trim()) storage.saveProspectsMailToken(legacyMailToken.trim());
     const storedResponsesEndpoint = storage.getProspectsResponsesEndpoint();
     const storedResponsesToken = storage.getProspectsResponsesToken();
-    const legacyResponsesEndpoint = localStorage.getItem(RESPONSES_ENDPOINT_KEY) || "";
-    const legacyResponsesToken = localStorage.getItem(RESPONSES_TOKEN_KEY) || "";
+    const legacyResponsesEndpoint = browserStorage.getItem(RESPONSES_ENDPOINT_KEY) || "";
+    const legacyResponsesToken = browserStorage.getItem(RESPONSES_TOKEN_KEY) || "";
     elements.responsesEndpoint.value = storedResponsesEndpoint || legacyResponsesEndpoint;
     elements.responsesToken.value = storedResponsesToken || legacyResponsesToken;
     if (!storedResponsesEndpoint && validateAppsScriptUrl(legacyResponsesEndpoint)) {
       storage.saveProspectsResponsesEndpoint(validateAppsScriptUrl(legacyResponsesEndpoint));
     }
     if (!storedResponsesToken && legacyResponsesToken.trim()) storage.saveProspectsResponsesToken(legacyResponsesToken.trim());
-    elements.relanceEndpoint.value = localStorage.getItem(RELANCE_ENDPOINT_KEY) || storedMailEndpoint || "";
-    elements.relanceToken.value = localStorage.getItem(RELANCE_TOKEN_KEY) || storedMailToken || "";
+    elements.relanceEndpoint.value = browserStorage.getItem(RELANCE_ENDPOINT_KEY) || storedMailEndpoint || "";
+    elements.relanceToken.value = browserStorage.getItem(RELANCE_TOKEN_KEY) || storedMailToken || "";
     populateTemplateEditors();
   }
 

@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Accueil - Redac-IMRaD</title>
+    <title>Tableau de bord - Redac-IMRaD</title>
     <link rel="stylesheet" href="styles.css?v=20260625-2" />
   </head>
   <body class="accueil-pilotage tab-accueil">
     <div data-main-nav data-active="accueil"></div>
     <main class="app-shell">
       <header class="topbar" aria-label="En-tête">
-        <div><p class="eyebrow">Sois fière de ton mémoire</p><h1>Accueil</h1></div>
+        <div><p class="eyebrow">Bienvenue, Audrey</p><h1>Tableau de bord</h1></div>
         <button class="primary-action" type="button" id="add-student-trigger">Ajouter un étudiant</button>
       </header>
 
@@ -63,6 +63,7 @@
 
           <fieldset class="form-section parcours-fields" data-parcours-fields="k4" hidden>
             <legend>Suivi K4</legend>
+            <p class="sync-note">Ces questions guident la réflexion ensemble. Le logiciel structure, Audrey décide.</p>
             <div class="form-grid">
               <label class="field full-width"><span>Cadrage du sujet</span><textarea name="k4Cadrage" rows="5"></textarea></label>
               <label class="field full-width"><span>Formulation actuelle du sujet</span><textarea name="k4Sujet" rows="4"></textarea></label>
@@ -78,9 +79,11 @@
 
           <fieldset class="form-section parcours-fields" data-parcours-fields="k5" hidden>
             <legend>Suivi K5</legend>
+            <p class="sync-note">Repérage indicatif uniquement — à vérifier lors de la relecture. Le logiciel détecte, Audrey analyse.</p>
             <div class="form-grid">
               <label class="field full-width"><span>Cohérence sujet / problématique / méthode</span><textarea name="k5Coherence" rows="5"></textarea></label><label class="field full-width"><span>Structure IMRaD</span><textarea name="k5Structure" rows="5"></textarea></label><label class="field full-width"><span>Bibliographie</span><textarea name="k5Bibliographie" rows="5"></textarea></label><label class="field full-width"><span>Résultats</span><textarea name="k5Resultats" rows="5"></textarea></label><label class="field full-width"><span>Discussion</span><textarea name="k5Discussion" rows="5"></textarea></label><label class="field full-width"><span>Préparation soutenance</span><textarea name="k5Soutenance" rows="5"></textarea></label><label class="field full-width"><span>Comptes rendus de visio</span><textarea name="k5ComptesRendus" rows="7"></textarea></label>
             </div>
+            <p class="sync-note">À passer en revue à mi-parcours et avant chaque rendu important.</p>
             <div class="field context-spacing"><span>Documents à fournir</span><div class="checkbox-grid">
               <label><input type="checkbox" name="k5Documents" value="Feuille de route personnalisée dès la visio 1" /> Feuille de route personnalisée dès la visio 1</label><label><input type="checkbox" name="k5Documents" value="Checklist de cohérence du mémoire" /> Checklist de cohérence du mémoire</label><label><input type="checkbox" name="k5Documents" value="Planning de rédaction semaine par semaine" /> Planning de rédaction semaine par semaine</label><label><input type="checkbox" name="k5Documents" value="Grille de préparation soutenance" /> Grille de préparation soutenance</label><label><input type="checkbox" name="k5Documents" value="Compte-rendu après chaque visio individuelle" /> Compte-rendu après chaque visio individuelle</label><label><input type="checkbox" name="k5Documents" value="Autres documents à venir" /> Autres documents à venir</label>
             </div></div>
@@ -88,6 +91,7 @@
 
           <fieldset class="form-section parcours-fields" data-parcours-fields="rattrapage" hidden>
             <legend>Suivi Rattrapage</legend>
+            <p class="sync-note">Saisir les retours tels que reçus, sans interprétation. Ils serviront de base à la hiérarchisation des corrections.</p>
             <div class="form-grid">
               <label class="field full-width"><span>Retours du jury</span><textarea name="rattrapageRetours" rows="6"></textarea></label><label class="field full-width"><span>Corrections demandées</span><textarea name="rattrapageCorrections" rows="5"></textarea></label><label class="field full-width"><span>Corrections prioritaires</span><textarea name="rattrapagePriorites" rows="5"></textarea></label><label class="field full-width"><span>Incohérences majeures</span><textarea name="rattrapageIncoherences" rows="5"></textarea></label><label class="field full-width"><span>Plan de reprise</span><textarea name="rattrapagePlan" rows="6"></textarea></label><label class="field full-width"><span>Préparation orale / défense du raisonnement</span><textarea name="rattrapageOral" rows="6"></textarea></label>
             </div>
@@ -144,11 +148,11 @@
       </section>
 
       <div class="accueil-blocks-grid">
-        <section class="workspace accueil-block accueil-todo-block" aria-labelledby="todo-title"><div class="section-heading"><div><p class="eyebrow">Suivi quotidien</p><h2 id="todo-title">À faire</h2></div></div><div id="todo-list" class="accueil-todo-list"></div></section>
-        <section class="workspace accueil-block accueil-deadlines-block" aria-labelledby="deadlines-title"><div class="section-heading"><div><p class="eyebrow">Prochainement</p><h2 id="deadlines-title">Échéances proches</h2></div><button class="secondary-action compact-action" type="button" id="show-all-deadlines">Voir tout</button></div><div id="deadlines-list" class="accueil-info-list"></div></section>
+        <section class="workspace accueil-block accueil-todo-block" aria-labelledby="todo-title"><div class="section-heading"><div><p class="eyebrow">Suivi quotidien</p><h2 id="todo-title">À faire</h2></div></div><p class="sync-note">Les actions prioritaires du moment — questionnaires en attente, relances à prévoir, mémoires à analyser.</p><div id="todo-list" class="accueil-todo-list"></div></section>
+        <section class="workspace accueil-block accueil-deadlines-block" aria-labelledby="deadlines-title"><div class="section-heading"><div><p class="eyebrow">Prochainement</p><h2 id="deadlines-title">Échéances proches</h2></div><button class="secondary-action compact-action" type="button" id="show-all-deadlines">Voir tout</button></div><p class="sync-note">Les étudiants dont une échéance approche dans les 7 prochains jours.</p><div id="deadlines-list" class="accueil-info-list"></div></section>
       </div>
 
-      <section class="workspace accueil-block accueil-notifications-block" aria-labelledby="notifications-title"><div class="section-heading"><div><p class="eyebrow">Informations</p><h2 id="notifications-title">Notifications</h2></div></div><div id="notifications-list" class="accueil-info-list"></div></section>
+      <section class="workspace accueil-block accueil-notifications-block" aria-labelledby="notifications-title"><div class="section-heading"><div><p class="eyebrow">Informations</p><h2 id="notifications-title">Notifications</h2></div></div><p class="sync-note">Rappels générés automatiquement par le logiciel — à valider par Audrey avant envoi.</p><div id="notifications-list" class="accueil-info-list"></div></section>
 
       <details class="workspace quick-prospect-workspace" id="quick-prospect-workspace">
         <summary><span><span class="eyebrow">Nouveau contact</span><strong>Ajouter rapidement un prospect</strong></span></summary>
@@ -197,9 +201,20 @@
     </main>
     <script src="config.private.js"></script>
     <script src="navigation.js?v=20260625-1" defer></script>
-    <script src="js/storage.js?v=25" defer></script>
+    <script src="constants/parcours.js" defer></script>
+    <script src="database/local-storage-database.js?v=25" defer></script>
+    <script src="database/sqlite-adapter.todo.js" defer></script>
+    <script src="database/index.js" defer></script>
+    <script src="repositories/student-repository.js" defer></script>
+    <script src="repositories/prospect-repository.js" defer></script>
+    <script src="repositories/settings-repository.js" defer></script>
+    <script src="services/student-service.js" defer></script>
+    <script src="services/prospect-service.js" defer></script>
+    <script src="services/settings-service.js" defer></script>
+    <script src="services/browser-storage-service.js" defer></script>
+    <script src="services/app-data-service.js" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
-    <script src="js/livrables-k4.js?v=12" defer></script>
-    <script src="accueil.js?v=24" defer></script>
+    <script src="pages/k4/livrables-k4.js?v=12" defer></script>
+    <script src="pages/accueil/accueil.js?v=24" defer></script>
   </body>
 </html>

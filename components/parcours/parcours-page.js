@@ -1,12 +1,64 @@
 (function renderParcoursStudents() {
-  const storage = window.RedacStorage;
+  const storage = window.RedacServices.appData;
   const container = document.querySelector("[data-parcours-students]");
 
   if (!container) return;
 
   const parcours = container.dataset.parcoursStudents;
   const count = document.querySelector("[data-parcours-count]");
-  const parcoursLabels = { "point-memoire": "Point Mémoire", k4: "K4", k5: "K5", rattrapage: "Rattrapage" };
+  const parcoursLabels = window.RedacConstants?.parcoursLabels || { "point-memoire": "Point Mémoire", k4: "K4", k5: "K5", rattrapage: "Rattrapage" };
+  const UI_MESSAGES = Object.freeze({
+    studentArchived: "Dossier archivé. Tu peux le retrouver dans les filtres.",
+  });
+  const FUTURE_HELP_TEXTS = Object.freeze({
+    rattrapageMemoireAnalysis: "Repérage automatique indicatif. Ces signaux complètent l'analyse d'Audrey, ne la remplacent pas.",
+  });
+  const FUTURE_BUTTON_TODOS = Object.freeze({
+    k4: [
+      "Analyser le sujet",
+      "Enregistrer la fiche de cadrage",
+      "Enregistrer la trame de question",
+      "Ajouter une visio",
+      "Supprimer cette visio",
+      "Générer la feuille de route dans Drive",
+    ],
+    k5: [
+      "Importer le mémoire",
+      "Extraire les éléments IMRaD",
+      "Enregistrer la grille IMRaD",
+      "Enregistrer la checklist",
+      "Ajouter un compte-rendu",
+      "Générer le CR dans Drive",
+      "Préparer le brouillon mail",
+      "Enregistrer le planning",
+      "Ajouter une visio",
+      "Marquer comme faite",
+      "Supprimer cette visio",
+      "Enregistrer la préparation soutenance",
+      "Récupérer les réponses du questionnaire",
+      "Préparer les livrables dans Drive",
+      "Générer le retour final dans Drive",
+      "Enregistrer la configuration",
+    ],
+    rattrapage: [
+      "Importer le mémoire",
+      "Analyser le mémoire",
+      "Enregistrer les remarques jury",
+      "Importer les corrections depuis les remarques",
+      "Ajouter une correction",
+      "Convertir les signaux en corrections",
+      "Enregistrer le plan de reprise",
+      "Ajouter une visio",
+      "Marquer comme faite",
+      "Supprimer cette visio",
+      "Enregistrer la préparation orale",
+      "Générer le plan de correction dans Drive",
+      "Générer la synthèse de reprise dans Drive",
+      "Préparer le brouillon mail",
+    ],
+  });
+  // TODO: afficher FUTURE_HELP_TEXTS.rattrapageMemoireAnalysis quand la zone d'analyse mémoire rattrapage existera.
+  // TODO: créer les boutons listés dans FUTURE_BUTTON_TODOS uniquement lorsque les fonctionnalités correspondantes existent.
   const statusValues = ["nouveau", "questionnaire-envoye", "questionnaire-recu", "memoire-importe", "analyse-en-cours", "retour-envoye", "a-relancer", "termine"];
   const parcoursTransferOptions = [
     { value: "k4", label: "K4" },
@@ -15,6 +67,8 @@
   ];
   let termeRechercheParcours = "";
   let statutFiltreParcours = "tous";
+  let urgenceFiltre = "";
+  let triFiltre = "";
   let archivesVisible = false;
   let archivesSection = null;
   let archivesButton = null;
@@ -56,7 +110,44 @@
       statusSelect.append(option);
     });
     statusField.append(statusLabel, statusSelect);
-    controls.append(searchField, statusField);
+
+    const urgencyField = document.createElement("label");
+    urgencyField.className = "field parcours-urgency-field";
+    const urgencyLabel = document.createElement("span");
+    urgencyLabel.textContent = "Urgence";
+    const urgencySelect = document.createElement("select");
+    [
+      { value: "", label: "Toutes les urgences" },
+      { value: "urgent", label: "Urgent (< 7 jours)" },
+      { value: "bientot", label: "Bientôt (< 15 jours)" },
+      { value: "depassee", label: "Échéance dépassée" },
+    ].forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label;
+      urgencySelect.append(option);
+    });
+    urgencyField.append(urgencyLabel, urgencySelect);
+
+    const sortField = document.createElement("label");
+    sortField.className = "field parcours-sort-field";
+    const sortLabel = document.createElement("span");
+    sortLabel.textContent = "Trier par";
+    const sortSelect = document.createElement("select");
+    [
+      { value: "", label: "Ordre par défaut" },
+      { value: "echeance_asc", label: "Échéance : la plus proche en premier" },
+      { value: "echeance_desc", label: "Échéance : la plus lointaine en premier" },
+      { value: "nom_asc", label: "Nom A → Z" },
+    ].forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label;
+      sortSelect.append(option);
+    });
+    sortField.append(sortLabel, sortSelect);
+
+    controls.append(searchField, statusField, urgencyField, sortField);
     container.before(controls);
 
     searchInput.addEventListener("input", () => {
@@ -67,6 +158,53 @@
       statutFiltreParcours = statusSelect.value;
       render();
     });
+    urgencySelect.addEventListener("change", () => {
+      urgenceFiltre = urgencySelect.value;
+      render();
+    });
+    sortSelect.addEventListener("change", () => {
+      triFiltre = sortSelect.value;
+      render();
+    });
+  }
+
+  function matchesUrgenceFilter(student) {
+    if (urgenceFiltre === "urgent") return storage.isUrgent(student) === true;
+    const deadlineLevel = storage.getNiveauEcheance(student);
+    if (urgenceFiltre === "bientot") return deadlineLevel === "bientot" || deadlineLevel === "urgent";
+    if (urgenceFiltre === "depassee") return deadlineLevel === "depassee";
+    return true;
+  }
+
+  function getDeadlineTimestamp(student) {
+    const date = new Date(student?.echeance || "");
+    return Number.isNaN(date.getTime()) ? Infinity : date.getTime();
+  }
+
+  function compareByDeadlineAsc(left, right) {
+    return getDeadlineTimestamp(left) - getDeadlineTimestamp(right);
+  }
+
+  function compareByDeadlineDesc(left, right) {
+    const leftTime = getDeadlineTimestamp(left);
+    const rightTime = getDeadlineTimestamp(right);
+    if (leftTime === Infinity && rightTime === Infinity) return 0;
+    if (leftTime === Infinity) return 1;
+    if (rightTime === Infinity) return -1;
+    return rightTime - leftTime;
+  }
+
+  function compareByName(left, right) {
+    const leftName = `${left.nom || ""} ${left.prenom || ""}`.trim();
+    const rightName = `${right.nom || ""} ${right.prenom || ""}`.trim();
+    return leftName.localeCompare(rightName, "fr", { sensitivity: "base" });
+  }
+
+  function sortStudents(students) {
+    if (triFiltre === "echeance_asc") return [...students].sort(compareByDeadlineAsc);
+    if (triFiltre === "echeance_desc") return [...students].sort(compareByDeadlineDesc);
+    if (triFiltre === "nom_asc") return [...students].sort(compareByName);
+    return students;
   }
 
   function addDetail(list, label, value) {
@@ -227,8 +365,14 @@
     actions.className = "student-card-actions";
     const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Ouvrir la fiche";
     const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier le suivi";
-    const archive = document.createElement("button"); archive.className = "secondary-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver"; archive.disabled = student.statut === "Archivé";
-    archive.addEventListener("click", () => { storage.archiveStudent(student.id); render(); });
+    const archive = document.createElement("button"); archive.className = "destructive-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver le dossier"; archive.disabled = student.statut === "Archivé";
+    archive.addEventListener("click", () => {
+      const confirmed = window.confirm("Confirmer l’archivage de ce dossier ?");
+      if (!confirmed) return;
+      storage.archiveStudent(student.id);
+      setParcoursStatus(UI_MESSAGES.studentArchived);
+      render();
+    });
     actions.append(open, edit, archive);
 
     if (student.parcours === "point-memoire" && student.statut !== "Archivé" && student.statutSuivi !== "archive") {
@@ -290,11 +434,11 @@
     });
 
     const remove = document.createElement("button");
-    remove.className = "danger-action archive-delete-action";
+    remove.className = "destructive-action archive-delete-action";
     remove.type = "button";
     remove.textContent = "Supprimer définitivement";
     remove.addEventListener("click", () => {
-      const confirmed = window.confirm("Supprimer définitivement cet étudiant ? Cette action est irréversible.");
+      const confirmed = window.confirm("Supprimer définitivement cet élément ? Cette action est irréversible.");
       if (!confirmed) return;
       storage.deleteStudent(student.id);
       render();
@@ -369,18 +513,19 @@
     const allStudents = storage.getStudentsByParcours(parcours);
     if (count) count.textContent = String(allStudents.length);
     const searchTerm = normalizeSearchValue(termeRechercheParcours.trim());
-    const students = allStudents.filter((student) => {
+    const students = sortStudents(allStudents.filter((student) => {
       const matchesSearch = !searchTerm || [student.prenom, student.nom, student.email]
         .some((value) => normalizeSearchValue(value).includes(searchTerm));
       const matchesStatus = statutFiltreParcours === "tous" || student.statutSuivi === statutFiltreParcours;
-      return matchesSearch && matchesStatus;
-    });
+      const matchesUrgence = matchesUrgenceFilter(student);
+      return matchesSearch && matchesStatus && matchesUrgence;
+    }));
     container.textContent = "";
 
     if (allStudents.length === 0) {
       const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Aucun étudiant accompagné dans ce parcours."; container.append(empty);
     } else if (students.length === 0) {
-      const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Aucun étudiant ne correspond à ta recherche."; container.append(empty);
+      const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = urgenceFiltre ? "Aucun étudiant urgent dans ce parcours pour le moment." : "Aucun étudiant ne correspond à ta recherche."; container.append(empty);
     } else {
       students.forEach((student) => container.append(createCard(student)));
     }

@@ -1,6 +1,13 @@
 (function initializePointMemoireResume(global) {
+  const browserStorage = global.RedacServices.browserStorage;
   const ENDPOINT_KEY = "redacImrad.pointMemoireResume.endpoint";
   const TOKEN_KEY = "redacImrad.pointMemoireResume.token";
+  const UI_MESSAGES = Object.freeze({
+    documentGenerated: "Document généré dans Drive. Tu peux le modifier avant d'envoyer le brouillon.",
+    draftPrepared: "Brouillon préparé dans Gmail. À vérifier et envoyer par Audrey.",
+    missingAppsScriptUrl: "L'URL Apps Script n'est pas configurée. Rends-toi dans les paramètres pour la renseigner.",
+    missingToken: "Le token de connexion est manquant. Vérifie la configuration dans les paramètres.",
+  });
   const EMPTY_RESUME = Object.freeze({
     dateVisio: "",
     annee: "",
@@ -37,18 +44,18 @@
   const messageElement = document.querySelector("#point-resume-message");
   const documentLink = document.querySelector("#open-point-resume-document");
 
-  if (!studentSelect || !form || !global.RedacStorage) return;
+  if (!studentSelect || !form || !global.RedacServices.appData) return;
 
   function normalizeResume(resume) {
     return { ...EMPTY_RESUME, ...(resume && typeof resume === "object" ? resume : {}) };
   }
 
   function getEndpoint() {
-    return global.RedacStorage.getEffectiveSettings?.().pointMemoire.appsScriptUrl || localStorage.getItem(ENDPOINT_KEY) || "";
+    return global.RedacServices.appData.getEffectiveSettings?.().pointMemoire.appsScriptUrl || browserStorage.getItem(ENDPOINT_KEY) || "";
   }
 
   function getToken() {
-    const savedToken = global.RedacStorage.getEffectiveSettings?.().pointMemoire.token || localStorage.getItem(TOKEN_KEY);
+    const savedToken = global.RedacServices.appData.getEffectiveSettings?.().pointMemoire.token || browserStorage.getItem(TOKEN_KEY);
     if (savedToken) return savedToken;
     try {
       return new URL(getEndpoint()).searchParams.get("token") || "";
@@ -60,7 +67,7 @@
   function saveEndpoint(url) {
     const trimmedUrl = String(url || "").trim();
     if (!trimmedUrl) {
-      localStorage.removeItem(ENDPOINT_KEY);
+      browserStorage.removeItem(ENDPOINT_KEY);
       return "";
     }
 
@@ -69,24 +76,24 @@
       throw new Error("Utilisez l’URL HTTPS du déploiement Apps Script.");
     }
     const tokenFromUrl = parsedUrl.searchParams.get("token");
-    if (tokenFromUrl) localStorage.setItem(TOKEN_KEY, tokenFromUrl);
+    if (tokenFromUrl) browserStorage.setItem(TOKEN_KEY, tokenFromUrl);
     parsedUrl.search = "";
-    localStorage.setItem(ENDPOINT_KEY, parsedUrl.toString());
+    browserStorage.setItem(ENDPOINT_KEY, parsedUrl.toString());
     return parsedUrl.toString();
   }
 
   function saveToken(token) {
     const trimmedToken = String(token || "").trim();
     if (!trimmedToken) {
-      localStorage.removeItem(TOKEN_KEY);
+      browserStorage.removeItem(TOKEN_KEY);
       return "";
     }
-    localStorage.setItem(TOKEN_KEY, trimmedToken);
+    browserStorage.setItem(TOKEN_KEY, trimmedToken);
     return trimmedToken;
   }
 
   function getSelectedStudent() {
-    return global.RedacStorage.getStudentById(studentSelect.value);
+    return global.RedacServices.appData.getStudentById(studentSelect.value);
   }
 
   function readForm() {
@@ -121,7 +128,7 @@
     const hasResult = Boolean(normalized.statut || normalized.docUrl || message);
     resultPanel.hidden = !hasResult;
     statusElement.textContent = normalized.statut || "Fiche résumé";
-    messageElement.textContent = message || (normalized.draftCreatedAt ? "À vérifier par Audrey avant envoi" : "");
+    messageElement.textContent = message || (normalized.draftCreatedAt ? UI_MESSAGES.draftPrepared : "");
     messageElement.hidden = !messageElement.textContent;
     documentLink.hidden = !isSafeDocumentUrl(normalized.docUrl);
     if (!documentLink.hidden) documentLink.href = normalized.docUrl;
@@ -142,7 +149,7 @@
 
   function populateStudents() {
     const selectedId = studentSelect.value;
-    const students = global.RedacStorage.getStudentsByParcours("point-memoire");
+    const students = global.RedacServices.appData.getStudentsByParcours("point-memoire");
     studentSelect.replaceChildren(new Option("Sélectionner un étudiant", ""));
     students.forEach((student) => {
       const name = `${student.prenom} ${student.nom}`.trim() || "Étudiant sans nom";
@@ -162,7 +169,7 @@
     const student = getSelectedStudent();
     if (!student) return null;
     const resume = { ...readForm(), ...options };
-    global.RedacStorage.updateStudent(student.id, { pointMemoireResume: resume });
+    global.RedacServices.appData.updateStudent(student.id, { pointMemoireResume: resume });
     fillForm(resume);
     renderResult(resume, options.message || "Fiche résumé enregistrée localement.");
     return resume;
@@ -209,13 +216,13 @@
 
     const endpoint = getEndpoint();
     if (!endpoint) {
-      renderResult(readForm(), "Enregistrez d’abord l’URL Apps Script — Fiche résumé Point Mémoire.");
+      renderResult(readForm(), UI_MESSAGES.missingAppsScriptUrl);
       return;
     }
 
     const token = getToken();
     if (!token) {
-      renderResult(readForm(), "Renseignez et enregistrez le token Apps Script.");
+      renderResult(readForm(), UI_MESSAGES.missingToken);
       return;
     }
 
@@ -244,7 +251,7 @@
         draftCreatedAt: new Date().toISOString(),
         statut: data.statut || "brouillon mail créé",
       });
-      renderResult(updatedResume, "À vérifier par Audrey avant envoi");
+      renderResult(updatedResume, UI_MESSAGES.documentGenerated);
     } catch (error) {
       renderResult(resume, `La préparation a échoué : ${error.message}`);
     } finally {

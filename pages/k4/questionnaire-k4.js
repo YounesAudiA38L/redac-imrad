@@ -1,4 +1,5 @@
 (function initializeK4Questionnaire(global) {
+  const browserStorage = global.RedacServices.browserStorage;
   const CONFIG_KEYS = Object.freeze({
     formUrl: "redacImrad.k4Questionnaire.formUrl",
     sendUrl: "redacImrad.k4Questionnaire.sendUrl",
@@ -9,6 +10,12 @@
   const UNMATCHED_KEY = "redacImrad.k4Questionnaire.unmatchedResponses";
   const SEND_STATUSES = new Set(["non envoyé", "brouillon créé"]);
   const RESPONSE_STATUSES = new Set(["aucune réponse", "réponse reçue"]);
+  const UI_MESSAGES = Object.freeze({
+    draftPrepared: "Brouillon préparé dans Gmail. À vérifier et envoyer par Audrey.",
+    missingStudentEmail: "Aucune adresse e-mail pour cet étudiant. Renseigne-la dans la fiche avant de continuer.",
+    googleNotConfigured: "La connexion à Google n'est pas encore configurée. Renseigne l'URL et le token dans les paramètres.",
+    missingToken: "Le token de connexion est manquant. Vérifie la configuration dans les paramètres.",
+  });
   const EMPTY_QUESTIONNAIRE = Object.freeze({
     formUrl: "",
     sendDraftId: "",
@@ -85,7 +92,7 @@
     unmatchedSection: document.querySelector("#k4-unmatched-responses"),
     unmatchedList: document.querySelector("#k4-unmatched-response-list"),
   };
-  if (!elements.container || !global.RedacStorage) return;
+  if (!elements.container || !global.RedacServices.appData) return;
 
   function normalizeEmail(value) {
     return String(value || "").trim().toLocaleLowerCase("fr-FR");
@@ -106,14 +113,14 @@
   function ensureStudentQuestionnaire(student) {
     const questionnairePreVisioK4 = normalizeQuestionnaire(student.questionnairePreVisioK4);
     if (!student.questionnairePreVisioK4 || JSON.stringify(student.questionnairePreVisioK4) !== JSON.stringify(questionnairePreVisioK4)) {
-      return global.RedacStorage.updateStudent(student.id, { questionnairePreVisioK4 });
+      return global.RedacServices.appData.updateStudent(student.id, { questionnairePreVisioK4 });
     }
     return student;
   }
 
   function getConfiguration() {
-    const config = Object.fromEntries(Object.entries(CONFIG_KEYS).map(([name, key]) => [name, localStorage.getItem(key) || ""]));
-    const effectiveK4 = global.RedacStorage.getEffectiveSettings?.().k4 || {};
+    const config = Object.fromEntries(Object.entries(CONFIG_KEYS).map(([name, key]) => [name, browserStorage.getItem(key) || ""]));
+    const effectiveK4 = global.RedacServices.appData.getEffectiveSettings?.().k4 || {};
     return {
       ...config,
       responsesUrl: config.responsesUrl || effectiveK4.responsesAppsScriptUrl || "",
@@ -139,8 +146,8 @@
       responsesToken: elements.responsesToken.value.trim(),
     };
     Object.entries(CONFIG_KEYS).forEach(([name, key]) => {
-      if (config[name]) localStorage.setItem(key, config[name]);
-      else localStorage.removeItem(key);
+      if (config[name]) browserStorage.setItem(key, config[name]);
+      else browserStorage.removeItem(key);
     });
     setGlobalStatus("La configuration du questionnaire K4 a été enregistrée.", "success");
     return config;
@@ -196,15 +203,15 @@
   }
 
   async function createQuestionnaireDraft(studentId) {
-    const student = global.RedacStorage.getStudentById(studentId);
+    const student = global.RedacServices.appData.getStudentById(studentId);
     if (!student || student.parcours !== "k4") return;
     const config = getConfiguration();
     if (!config.formUrl || !config.sendUrl || !config.sendToken) {
-      setCardStatus(studentId, "Complétez et enregistrez la configuration d’envoi du questionnaire K4.", "warning");
+      setCardStatus(studentId, !config.sendToken ? UI_MESSAGES.missingToken : UI_MESSAGES.googleNotConfigured, "warning");
       return;
     }
     if (!normalizeEmail(student.email)) {
-      setCardStatus(studentId, "Ajoutez l’adresse email de l’étudiant avant de créer le brouillon.", "warning");
+      setCardStatus(studentId, UI_MESSAGES.missingStudentEmail, "warning");
       return;
     }
 
@@ -228,9 +235,9 @@
         sendDraftCreatedAt: data.sendDraftCreatedAt || new Date().toISOString(),
         sendStatus: data.sendStatus || "brouillon créé",
       };
-      const updated = global.RedacStorage.updateStudent(studentId, { questionnairePreVisioK4 });
+      const updated = global.RedacServices.appData.updateStudent(studentId, { questionnairePreVisioK4 });
       renderQuestionnairePanel(updated);
-      setCardStatus(studentId, "Brouillon créé. À vérifier par Audrey dans Gmail avant envoi.", "success");
+      setCardStatus(studentId, UI_MESSAGES.draftPrepared, "success");
     } catch (error) {
       setCardStatus(studentId, `La création du brouillon a échoué : ${error.message}`, "error");
     } finally {
@@ -285,7 +292,7 @@
   }
 
   function associateResponses(responses) {
-    const students = global.RedacStorage.getStudentsByParcours("k4");
+    const students = global.RedacServices.appData.getStudentsByParcours("k4");
     const studentsByEmail = new Map(students.filter((student) => normalizeEmail(student.email)).map((student) => [normalizeEmail(student.email), student]));
     const grouped = new Map();
     const unmatched = [];
@@ -305,16 +312,16 @@
     grouped.forEach((matches, studentId) => {
       associatedCount += matches.length;
       const latest = [...matches].sort((a, b) => responseTime(b) - responseTime(a))[0];
-      const student = global.RedacStorage.getStudentById(studentId);
+      const student = global.RedacServices.appData.getStudentById(studentId);
       const questionnairePreVisioK4 = {
         ...normalizeQuestionnaire(student.questionnairePreVisioK4),
         ...latest,
         responseStatus: "réponse reçue",
       };
-      global.RedacStorage.updateStudent(studentId, { questionnairePreVisioK4 });
+      global.RedacServices.appData.updateStudent(studentId, { questionnairePreVisioK4 });
     });
 
-    localStorage.setItem(UNMATCHED_KEY, JSON.stringify(unmatched));
+    browserStorage.setItem(UNMATCHED_KEY, JSON.stringify(unmatched));
     renderUnmatchedResponses(unmatched);
     renderAllQuestionnaires();
     return { associatedCount, unmatchedCount: unmatched.length };
@@ -323,7 +330,7 @@
   async function checkNewResponses() {
     const config = getConfiguration();
     if (!config.responsesUrl || !config.responsesToken) {
-      setGlobalStatus("Complétez et enregistrez la configuration des réponses questionnaire K4.", "warning");
+      setGlobalStatus(!config.responsesToken ? UI_MESSAGES.missingToken : UI_MESSAGES.googleNotConfigured, "warning");
       return;
     }
     const url = buildResponsesRequestUrl(config.responsesUrl, config.responsesToken);
@@ -413,7 +420,7 @@
     draftButton.className = "secondary-action";
     draftButton.type = "button";
     draftButton.dataset.createK4QuestionnaireDraft = "";
-    draftButton.textContent = "Créer le brouillon d’envoi du questionnaire";
+    draftButton.textContent = "Préparer le questionnaire";
     draftButton.addEventListener("click", () => createQuestionnaireDraft(student.id));
 
     const panelId = `k4-questionnaire-${student.id}`;
@@ -480,12 +487,12 @@
   }
 
   function renderAllQuestionnaires() {
-    global.RedacStorage.getStudentsByParcours("k4").forEach(renderQuestionnairePanel);
+    global.RedacServices.appData.getStudentsByParcours("k4").forEach(renderQuestionnairePanel);
   }
 
   hydrateConfiguration();
   try {
-    const cachedUnmatched = JSON.parse(localStorage.getItem(UNMATCHED_KEY)) || [];
+    const cachedUnmatched = JSON.parse(browserStorage.getItem(UNMATCHED_KEY)) || [];
     renderUnmatchedResponses(Array.isArray(cachedUnmatched) ? cachedUnmatched : []);
   } catch {
     renderUnmatchedResponses([]);

@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="fr">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Accompagnement Rattrapage - Redac-IMRaD</title><link rel="stylesheet" href="styles.css?v=20260625-2" /></head>
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Rattrapage - Redac-IMRaD</title><link rel="stylesheet" href="styles.css?v=20260625-2" /></head>
   <body class="tab-rattrapage">
     <div data-main-nav data-active="rattrapage"></div>
     <main class="app-shell">
-      <header class="topbar"><div><p class="eyebrow">Reprise après retour jury</p><h1>Accompagnement Rattrapage</h1></div><a class="primary-action" href="index.html?new=rattrapage">Ajouter un étudiant accompagné</a></header>
+      <header class="topbar"><div><p class="eyebrow">Reprise après retour jury</p><h1>Rattrapage</h1></div><a class="primary-action" href="index.html?new=rattrapage">Ajouter un étudiant accompagné</a></header>
       <section class="status-band"><div><p class="eyebrow">Suivi des accompagnements</p><h2>Étudiants du parcours Rattrapage</h2><p>Retrouvez les corrections demandées, les priorités de correction et le plan de reprise saisis depuis l’Accueil.</p></div><div class="status-panel"><span class="status-label">Étudiants</span><strong data-parcours-count>0</strong><span class="status-note">Rattrapage</span></div></section>
       <section class="workspace"><div class="section-heading"><div><p class="eyebrow">Fiches étudiant</p><h2>Étudiants accompagnés</h2></div></div><div class="student-grid" data-parcours-students="rattrapage" aria-live="polite"></div></section>
     </main>
-    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="js/storage.js?v=25" defer></script><script src="parcours.js?v=20260625-1" defer></script>
+    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="constants/parcours.js" defer></script><script src="database/local-storage-database.js?v=25" defer></script><script src="database/sqlite-adapter.todo.js" defer></script><script src="database/index.js" defer></script><script src="repositories/student-repository.js" defer></script><script src="repositories/prospect-repository.js" defer></script><script src="repositories/settings-repository.js" defer></script><script src="services/student-service.js" defer></script><script src="services/prospect-service.js" defer></script><script src="services/settings-service.js" defer></script><script src="services/browser-storage-service.js" defer></script><script src="services/app-data-service.js" defer></script><script src="components/parcours/parcours-page.js?v=20260625-1" defer></script>
   </body>
 </html>

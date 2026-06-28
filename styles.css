@@ -202,7 +202,8 @@ p {
 }
 
 .primary-action,
-.secondary-action {
+.secondary-action,
+.destructive-action {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
@@ -233,7 +234,8 @@ p {
 }
 
 .primary-action[aria-disabled="true"],
-.secondary-action:disabled {
+.secondary-action:disabled,
+.destructive-action:disabled {
   cursor: not-allowed;
   border-color: #aab7b1;
   background: #eef1ee;
@@ -2925,6 +2927,7 @@ button,
 .secondary-action,
 .ghost-action,
 .danger-action,
+.destructive-action,
 .filter-button {
   letter-spacing: 0;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
@@ -2934,6 +2937,7 @@ button,
 .secondary-action,
 .ghost-action,
 .danger-action,
+.destructive-action,
 .filter-button,
 input[type="file"]::file-selector-button {
   border-radius: 14px;
@@ -2942,7 +2946,8 @@ input[type="file"]::file-selector-button {
 .primary-action,
 .secondary-action,
 .ghost-action,
-.danger-action {
+.danger-action,
+.destructive-action {
   padding-right: 20px;
   padding-left: 20px;
 }
@@ -2970,14 +2975,17 @@ input[type="file"]::file-selector-button {
   color: var(--accent-strong);
 }
 
-.danger-action {
+.danger-action,
+.destructive-action {
   border: 1px solid #d7aeb4;
   background: #f8e8ea;
   color: #823845;
 }
 
 .danger-action:not(:disabled):hover,
-.danger-action:not(:disabled):focus-visible {
+.danger-action:not(:disabled):focus-visible,
+.destructive-action:not(:disabled):hover,
+.destructive-action:not(:disabled):focus-visible {
   border-color: #bf7f89;
   background: #f3dadd;
   box-shadow: 0 4px 12px rgba(130, 56, 69, 0.1);
@@ -2995,6 +3003,7 @@ button:focus-visible,
 .secondary-action:focus-visible,
 .ghost-action:focus-visible,
 .danger-action:focus-visible,
+.destructive-action:focus-visible,
 .filter-button:focus-visible {
   outline: 3px solid rgba(29, 107, 95, 0.16);
   outline-offset: 2px;
@@ -3082,6 +3091,7 @@ button,
 .secondary-action,
 .ghost-action,
 .danger-action,
+.destructive-action,
 .filter-button,
 input[type="file"]::file-selector-button {
   border-radius: 999px;
@@ -3090,7 +3100,8 @@ input[type="file"]::file-selector-button {
 .primary-action,
 .secondary-action,
 .ghost-action,
-.danger-action {
+.danger-action,
+.destructive-action {
   min-height: 44px;
   padding-right: 22px;
   padding-left: 22px;
@@ -3113,6 +3124,7 @@ input[type="file"]::file-selector-button {
   .secondary-action,
   .ghost-action,
   .danger-action,
+  .destructive-action,
   .filter-button {
     border-radius: 999px;
   }
@@ -3978,4 +3990,15 @@ body,
 .prospect-card,
 .panel {
   background-color: var(--surface);
+}
+
+/* === Filtres parcours : urgence et tri === */
+.parcours-filter-bar {
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(170px, 240px));
+}
+
+@media (max-width: 640px) {
+  .parcours-filter-bar {
+    grid-template-columns: 1fr;
+  }
 }

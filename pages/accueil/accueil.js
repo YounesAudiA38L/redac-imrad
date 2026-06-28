@@ -1,4 +1,5 @@
-const storage = window.RedacStorage;
+const storage = window.RedacServices.appData;
+const browserStorage = window.RedacServices.browserStorage;
 const formWorkspace = document.querySelector("#student-form-workspace");
 const studentForm = document.querySelector("#student-form");
 const formTitle = document.querySelector("#student-form-title");
@@ -69,6 +70,19 @@ const parcoursLabels = {
   rattrapage: "Rattrapage",
 };
 
+const validParcours = new Set(["point-memoire", "k4", "k5", "rattrapage"]);
+
+function normalizeParcours(parcours) {
+  const normalized = String(parcours || "").trim().toLocaleLowerCase("fr-FR");
+  if (["point-memoire", "point mémoire", "point memoire"].includes(normalized)) return "point-memoire";
+  if (validParcours.has(normalized)) return normalized;
+  return "";
+}
+
+function isValidParcours(parcours) {
+  return validParcours.has(normalizeParcours(parcours));
+}
+
 const statusValues = ["nouveau", "questionnaire-envoye", "questionnaire-recu", "memoire-importe", "analyse-en-cours", "retour-envoye", "a-relancer", "termine", "archive"];
 
 const pointAxisLabels = {
@@ -87,6 +101,33 @@ const CALENDAR_TOKEN_KEY = "redacImrad.calendar.token";
 const K4_RESPONSES_ENDPOINT_KEY = "redacImrad.k4Questionnaire.responsesUrl";
 const K4_RESPONSES_TOKEN_KEY = "redacImrad.k4Questionnaire.responsesToken";
 const POINT_MEMOIRE_RESPONSES_ENDPOINT_KEY = "redacImrad.questionnaires.endpoint";
+const UI_MESSAGES = Object.freeze({
+  appsScriptNotConfigured: "La connexion à Google n'est pas encore configurée. Renseigne l'URL et le token dans les paramètres.",
+  missingToken: "Le token de connexion est manquant. Vérifie la configuration dans les paramètres.",
+  noStudentSelected: "Aucun étudiant sélectionné. Choisis un étudiant dans la liste avant de continuer.",
+  studentCreated: "Fiche créée. Tu peux maintenant compléter le suivi depuis l'onglet correspondant.",
+  studentArchived: "Dossier archivé. Tu peux le retrouver dans les filtres.",
+  prospectConverted: "Prospect transformé en étudiant. La fiche a été créée dans l'onglet correspondant.",
+  appointmentCreated: "Visio planifiée ajoutée. Le rappel J+5 se déclenchera après la visio.",
+  fileImportFailed: "Impossible de lire ce fichier. Vérifie qu'il s'agit bien d'un fichier .docx ou .pdf valide.",
+});
+const NOTIFICATION_MESSAGE_TEMPLATES = Object.freeze({
+  questionnairePending7Days: "[Prénom Nom] n'a pas encore répondu au questionnaire (envoyé le [date]). Penser à relancer ?",
+  k4FollowupJ5: "Suivi K4 — [Prénom Nom] — visio du [date]. J+5 : un mail de suivi ?",
+  k5FollowupJ5: "Suivi K5 — [Prénom Nom] — visio du [date]. J+5 : un mail de suivi ?",
+  rattrapageJ2: "[Prénom Nom] — 2 jours après la première visio rattrapage. Un mail de soutien ?",
+  soutenanceJ10: "[Prénom Nom] — soutenance dans 10 jours. Envoyer le mail de préparation ?",
+  pointMemoireJ30: "[Prénom Nom] — Point Mémoire du [date]. J+30 : envoyer le questionnaire de suivi ?",
+  rattrapageJ15: "[Prénom Nom] — session rattrapage du [date]. J+15 : envoyer le questionnaire de suivi ?",
+});
+const FUTURE_BUTTON_TODOS = Object.freeze({
+  notifications: ["Préparer le brouillon", "Ignorer"],
+  deadlines: ["Voir la fiche", "Préparer le brouillon"],
+  mailTemplates: ["Préparer le brouillon Gmail", "Enregistrer l’URL Apps Script"],
+  deleteStudentPermanently: ["Supprimer définitivement"],
+});
+// TODO: utiliser NOTIFICATION_MESSAGE_TEMPLATES quand les relances calendaires correspondantes seront implémentées.
+// TODO: créer les boutons listés dans FUTURE_BUTTON_TODOS uniquement lorsque les fonctionnalités correspondantes existent.
 const CONFIG_EXPORT_LOCAL_STORAGE_KEYS = [
   "redacImrad.calendar.endpoint",
   "redacImrad.calendar.token",
@@ -320,24 +361,80 @@ function value(data, name) {
   return data.get(name)?.trim() || "";
 }
 
+function hasFormControl(name) {
+  return Boolean(studentForm.elements.namedItem(name));
+}
+
+function setCollectedValue(target, key, data, name) {
+  if (data.has(name)) target[key] = value(data, name);
+}
+
+function setCollectedValues(target, key, data, name) {
+  if (hasFormControl(name)) target[key] = data.getAll(name);
+}
+
 function collectPointData(data) {
+  const pointData = {};
+  setCollectedValue(pointData, "syntheseQuestionnaire", data, "pointSynthese");
+  const questions = ["pointQuestion1", "pointQuestion2", "pointQuestion3"].map((name) => data.has(name) ? value(data, name) : undefined);
+  if (questions.some((question) => question !== undefined)) pointData.questions = questions.map((question) => question || "");
+  setCollectedValue(pointData, "notesVisio", data, "pointNotesVisio");
+
   const axes = {};
   window.GRILLE_POINT_MEMOIRE.axes.forEach((axis) => {
-    axes[axis.id] = {
-      pointsSolides: value(data, `pointAxis-${axis.id}-pointsSolides`),
-      pointsVigilance: value(data, `pointAxis-${axis.id}-pointsVigilance`),
-      prioritesCorrection: value(data, `pointAxis-${axis.id}-prioritesCorrection`),
-      notesLibres: value(data, `pointAxis-${axis.id}-notesLibres`),
-    };
+    const axisData = {};
+    setCollectedValue(axisData, "pointsSolides", data, `pointAxis-${axis.id}-pointsSolides`);
+    setCollectedValue(axisData, "pointsVigilance", data, `pointAxis-${axis.id}-pointsVigilance`);
+    setCollectedValue(axisData, "prioritesCorrection", data, `pointAxis-${axis.id}-prioritesCorrection`);
+    setCollectedValue(axisData, "notesLibres", data, `pointAxis-${axis.id}-notesLibres`);
+    if (Object.keys(axisData).length) axes[axis.id] = axisData;
   });
-  return { syntheseQuestionnaire: value(data, "pointSynthese"), questions: [value(data, "pointQuestion1"), value(data, "pointQuestion2"), value(data, "pointQuestion3")], notesVisio: value(data, "pointNotesVisio"), axes };
+  if (Object.keys(axes).length) pointData.axes = axes;
+  return pointData;
+}
+
+function collectK4Data(data) {
+  const parcoursData = {};
+  setCollectedValue(parcoursData, "cadrageSujet", data, "k4Cadrage");
+  setCollectedValue(parcoursData, "sujetActuel", data, "k4Sujet");
+  setCollectedValue(parcoursData, "questionRecherche", data, "k4Question");
+  setCollectedValue(parcoursData, "choixMethode", data, "k4Methode");
+  setCollectedValue(parcoursData, "premiersArticles", data, "k4Articles");
+  setCollectedValue(parcoursData, "feuilleRouteK5", data, "k4FeuilleRoute");
+  setCollectedValues(parcoursData, "documents", data, "k4Documents");
+  return parcoursData;
+}
+
+function collectK5Data(data) {
+  const parcoursData = {};
+  setCollectedValue(parcoursData, "coherence", data, "k5Coherence");
+  setCollectedValue(parcoursData, "structureImrad", data, "k5Structure");
+  setCollectedValue(parcoursData, "bibliographie", data, "k5Bibliographie");
+  setCollectedValue(parcoursData, "resultats", data, "k5Resultats");
+  setCollectedValue(parcoursData, "discussion", data, "k5Discussion");
+  setCollectedValue(parcoursData, "preparationSoutenance", data, "k5Soutenance");
+  setCollectedValue(parcoursData, "comptesRendusVisio", data, "k5ComptesRendus");
+  setCollectedValues(parcoursData, "documents", data, "k5Documents");
+  return parcoursData;
+}
+
+function collectRattrapageData(data) {
+  const parcoursData = {};
+  setCollectedValue(parcoursData, "retoursJury", data, "rattrapageRetours");
+  setCollectedValue(parcoursData, "correctionsDemandees", data, "rattrapageCorrections");
+  setCollectedValue(parcoursData, "correctionsPrioritaires", data, "rattrapagePriorites");
+  setCollectedValue(parcoursData, "incoherencesMajeures", data, "rattrapageIncoherences");
+  setCollectedValue(parcoursData, "planReprise", data, "rattrapagePlan");
+  setCollectedValue(parcoursData, "preparationOrale", data, "rattrapageOral");
+  setCollectedValues(parcoursData, "documents", data, "rattrapageDocuments");
+  return parcoursData;
 }
 
 function collectParcoursData(parcours, data) {
   if (parcours === "point-memoire") return collectPointData(data);
-  if (parcours === "k4") return { cadrageSujet: value(data, "k4Cadrage"), sujetActuel: value(data, "k4Sujet"), questionRecherche: value(data, "k4Question"), choixMethode: value(data, "k4Methode"), premiersArticles: value(data, "k4Articles"), feuilleRouteK5: value(data, "k4FeuilleRoute"), documents: data.getAll("k4Documents") };
-  if (parcours === "k5") return { coherence: value(data, "k5Coherence"), structureImrad: value(data, "k5Structure"), bibliographie: value(data, "k5Bibliographie"), resultats: value(data, "k5Resultats"), discussion: value(data, "k5Discussion"), preparationSoutenance: value(data, "k5Soutenance"), comptesRendusVisio: value(data, "k5ComptesRendus"), documents: data.getAll("k5Documents") };
-  if (parcours === "rattrapage") return { retoursJury: value(data, "rattrapageRetours"), correctionsDemandees: value(data, "rattrapageCorrections"), correctionsPrioritaires: value(data, "rattrapagePriorites"), incoherencesMajeures: value(data, "rattrapageIncoherences"), planReprise: value(data, "rattrapagePlan"), preparationOrale: value(data, "rattrapageOral"), documents: data.getAll("rattrapageDocuments") };
+  if (parcours === "k4") return collectK4Data(data);
+  if (parcours === "k5") return collectK5Data(data);
+  if (parcours === "rattrapage") return collectRattrapageData(data);
   return {};
 }
 
@@ -384,10 +481,17 @@ function createStudentCard(student) {
   });
 
   const actions = document.createElement("div"); actions.className = "student-card-actions";
-  const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Ouvrir";
+  const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Voir la fiche";
   const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier";
-  const archive = document.createElement("button"); archive.className = "secondary-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver"; archive.disabled = student.statut === "Archivé";
-  archive.addEventListener("click", () => { storage.archiveStudent(student.id); renderStudents(); });
+  const archive = document.createElement("button"); archive.className = "destructive-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver le dossier"; archive.disabled = student.statut === "Archivé";
+  archive.addEventListener("click", () => {
+    const confirmed = window.confirm("Confirmer l’archivage de ce dossier ?");
+    if (!confirmed) return;
+    storage.archiveStudent(student.id);
+    formMessage.textContent = UI_MESSAGES.studentArchived;
+    formMessage.hidden = false;
+    renderStudents();
+  });
   actions.append(open, edit, archive);
   card.append(header, details, actions);
   return card;
@@ -411,7 +515,7 @@ function renderStudents() {
   if (students.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
-    empty.textContent = database.students.length ? "Aucun étudiant ne correspond à ta recherche." : "Aucun étudiant accompagné pour le moment.";
+    empty.textContent = database.students.length ? "Aucun étudiant ne correspond à ta recherche." : "Aucun étudiant pour le moment. Ajoute ton premier étudiant depuis le bouton ci-dessus.";
     studentList.append(empty);
     return;
   }
@@ -735,7 +839,7 @@ function getQuestionnaireStatsConnection(id) {
   if (id === "pointMemoire") {
     const effectivePointMemoire = storage.getEffectiveSettings?.().pointMemoire || {};
     return {
-      endpoint: validateStatsEndpoint(effectivePointMemoire.appsScriptUrl || localStorage.getItem(POINT_MEMOIRE_RESPONSES_ENDPOINT_KEY) || ""),
+      endpoint: validateStatsEndpoint(effectivePointMemoire.appsScriptUrl || browserStorage.getItem(POINT_MEMOIRE_RESPONSES_ENDPOINT_KEY) || ""),
       token: String(effectivePointMemoire.token || "").trim(),
       needsToken: false,
     };
@@ -743,8 +847,8 @@ function getQuestionnaireStatsConnection(id) {
   if (id === "k4") {
     const effectiveK4 = storage.getEffectiveSettings?.().k4 || {};
     return {
-      endpoint: validateStatsEndpoint(effectiveK4.responsesAppsScriptUrl || localStorage.getItem(K4_RESPONSES_ENDPOINT_KEY) || ""),
-      token: String(effectiveK4.token || localStorage.getItem(K4_RESPONSES_TOKEN_KEY) || "").trim(),
+      endpoint: validateStatsEndpoint(effectiveK4.responsesAppsScriptUrl || browserStorage.getItem(K4_RESPONSES_ENDPOINT_KEY) || ""),
+      token: String(effectiveK4.token || browserStorage.getItem(K4_RESPONSES_TOKEN_KEY) || "").trim(),
       needsToken: true,
     };
   }
@@ -832,7 +936,7 @@ function setPrivateConfigMessage(message, state = "") {
 }
 
 function getWhitelistedLocalStorageConfig() {
-  return Object.fromEntries(CONFIG_EXPORT_LOCAL_STORAGE_KEYS.map((key) => [key, localStorage.getItem(key) || ""]));
+  return Object.fromEntries(CONFIG_EXPORT_LOCAL_STORAGE_KEYS.map((key) => [key, browserStorage.getItem(key) || ""]));
 }
 
 function buildPrivateConfigExport() {
@@ -917,7 +1021,7 @@ function applyEffectiveSettingsToLocalConfig(effectiveSettings) {
     "redacImrad.rattrapageQuestionnaire.responsesToken": rattrapage.token || "",
   };
   Object.entries(values).forEach(([key, value]) => {
-    if (value) localStorage.setItem(key, value);
+    if (value) browserStorage.setItem(key, value);
   });
 }
 
@@ -932,8 +1036,8 @@ function applyImportedConfiguration(payload) {
   if (imported.localStorage && typeof imported.localStorage === "object") {
     CONFIG_EXPORT_LOCAL_STORAGE_KEYS.forEach((key) => {
       const value = String(imported.localStorage[key] || "").trim();
-      if (value) localStorage.setItem(key, value);
-      else localStorage.removeItem(key);
+      if (value) browserStorage.setItem(key, value);
+      else browserStorage.removeItem(key);
     });
   }
 
@@ -953,7 +1057,7 @@ async function importPrivateConfigurationFile(file) {
   try {
     payload = JSON.parse(await file.text());
   } catch {
-    setPrivateConfigMessage("Impossible de lire ce fichier.", "error");
+    setPrivateConfigMessage(UI_MESSAGES.fileImportFailed, "error");
     return;
   }
 
@@ -985,20 +1089,20 @@ function parseCalendarEndpoint(rawValue) {
 
 function initializeCalendarConnection() {
   const effectiveAgenda = storage.getEffectiveSettings?.().agenda || {};
-  calendarEndpointInput.value = effectiveAgenda.appsScriptUrl || localStorage.getItem(CALENDAR_ENDPOINT_KEY) || "";
-  calendarTokenInput.value = effectiveAgenda.token || localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
+  calendarEndpointInput.value = effectiveAgenda.appsScriptUrl || browserStorage.getItem(CALENDAR_ENDPOINT_KEY) || "";
+  calendarTokenInput.value = effectiveAgenda.token || browserStorage.getItem(CALENDAR_TOKEN_KEY) || "";
 }
 
 function saveCalendarConnection() {
   const parsedEndpoint = parseCalendarEndpoint(calendarEndpointInput.value);
   const token = calendarTokenInput.value.trim() || parsedEndpoint?.tokenFromUrl || "";
   if (!parsedEndpoint || !token) {
-    setCalendarConfigMessage("Renseignez une URL de déploiement Apps Script valide et son token.", "error");
+    setCalendarConfigMessage(UI_MESSAGES.appsScriptNotConfigured, "error");
     return false;
   }
 
-  localStorage.setItem(CALENDAR_ENDPOINT_KEY, parsedEndpoint.endpoint);
-  localStorage.setItem(CALENDAR_TOKEN_KEY, token);
+  browserStorage.setItem(CALENDAR_ENDPOINT_KEY, parsedEndpoint.endpoint);
+  browserStorage.setItem(CALENDAR_TOKEN_KEY, token);
   calendarEndpointInput.value = parsedEndpoint.endpoint;
   calendarTokenInput.value = token;
   setCalendarConfigMessage(`Connexion enregistrée pour l’agenda ${CALENDAR_ID}.`, "success");
@@ -1031,16 +1135,16 @@ async function addGoogleAppointment(event) {
     return;
   }
   if (!contact) {
-    setAppointmentMessage(`Merci de sélectionner ${contactType === "prospect" ? "le prospect" : "l’étudiant"} concerné.`, "error");
+    setAppointmentMessage(contactType === "prospect" ? "Aucun prospect sélectionné. Choisis un prospect dans la liste avant de continuer." : UI_MESSAGES.noStudentSelected, "error");
     return;
   }
 
   const effectiveAgenda = storage.getEffectiveSettings?.().agenda || {};
-  const parsedEndpoint = parseCalendarEndpoint(effectiveAgenda.appsScriptUrl || localStorage.getItem(CALENDAR_ENDPOINT_KEY));
+  const parsedEndpoint = parseCalendarEndpoint(effectiveAgenda.appsScriptUrl || browserStorage.getItem(CALENDAR_ENDPOINT_KEY));
   const agendaScriptUrl = parsedEndpoint?.endpoint || "";
-  const agendaToken = effectiveAgenda.token || localStorage.getItem(CALENDAR_TOKEN_KEY) || "";
+  const agendaToken = effectiveAgenda.token || browserStorage.getItem(CALENDAR_TOKEN_KEY) || "";
   if (!agendaScriptUrl || !agendaToken) {
-    setAppointmentMessage("Connexion Apps Script de l’agenda à configurer.", "error");
+    setAppointmentMessage(UI_MESSAGES.appsScriptNotConfigured, "error");
     return;
   }
 
@@ -1111,7 +1215,7 @@ async function addGoogleAppointment(event) {
     const response = await fetch(url);
     const result = await response.json();
     if (!response.ok || result.success !== true) throw new Error(result.error || "Apps Script n’a pas confirmé la création du rendez-vous.");
-    setAppointmentMessage("Rendez-vous ajouté à l’agenda", "success");
+    setAppointmentMessage(UI_MESSAGES.appointmentCreated, "success");
     appointmentForm.reset();
     appointmentContactTypeSelect.value = contactType;
     renderAppointmentContacts();
@@ -1230,18 +1334,24 @@ quickProspectForm.addEventListener("submit", (event) => {
 studentForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const data = new FormData(studentForm);
-  const parcours = data.get("parcours");
+  const parcours = normalizeParcours(data.get("parcours"));
+  if (!isValidParcours(parcours)) {
+    formMessage.textContent = "Sélectionnez un parcours valide : Point Mémoire, K4, K5 ou Rattrapage.";
+    formMessage.hidden = false;
+    return;
+  }
+
   const selectedFile = fileInput.files?.[0];
   const existing = editingStudentId ? storage.getStudentById(editingStudentId) : null;
   const studentData = {
-    prenom: value(data, "prenom"), nom: value(data, "nom"), email: value(data, "email"), ifmk: value(data, "ifmk"), telephone: value(data, "telephone"), dateDebut: data.get("dateDebut") || "", echeance: data.get("echeance") || "", parcours, thematiqueMemoire: value(data, "thematiqueMemoire"), statut: data.get("statut") || "En cours", statutSuivi: data.get("statutSuivi") || "nouveau", urgentManuel: data.get("urgentManuel") === "on", notesInitiales: value(data, "notesInitiales"), donneesParcours: collectParcoursData(parcours, data), memoireImporte: selectedFile ? { nom: selectedFile.name, type: selectedFile.type, taille: selectedFile.size } : existing?.memoireImporte || null,
+    prenom: value(data, "prenom"), nom: value(data, "nom"), email: value(data, "email"), ifmk: value(data, "ifmk"), telephone: value(data, "telephone"), dateDebut: data.get("dateDebut") || "", echeance: data.get("echeance") || "", parcours, thematiqueMemoire: value(data, "thematiqueMemoire"), statut: data.get("statut") || "En cours", statutSuivi: data.get("statutSuivi") || "nouveau", urgentManuel: data.get("urgentManuel") === "on", notesInitiales: value(data, "notesInitiales"), donneesParcours: { ...(existing?.donneesParcours || {}), ...collectParcoursData(parcours, data) }, memoireImporte: selectedFile ? { nom: selectedFile.name, type: selectedFile.type, taille: selectedFile.size } : existing?.memoireImporte || null,
     livrablesK4: parcours === "k4" ? existing?.livrablesK4 || window.LivrablesK4.getLivrablesK4() : existing?.livrablesK4 || null,
   };
 
   if (editingStudentId) storage.updateStudent(editingStudentId, studentData);
   else if (convertingProspectId) storage.convertProspectToStudent(convertingProspectId, studentData);
   else storage.createStudent(studentData);
-  formMessage.textContent = editingStudentId ? "La fiche étudiant a été mise à jour." : (convertingProspectId ? "Le prospect a été converti en étudiant." : "La fiche étudiant a été créée.");
+  formMessage.textContent = editingStudentId ? "La fiche étudiant a été mise à jour." : (convertingProspectId ? UI_MESSAGES.prospectConverted : UI_MESSAGES.studentCreated);
   formMessage.hidden = false;
   renderStudents();
   setTimeout(closeForm, 700);

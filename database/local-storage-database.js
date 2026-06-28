@@ -13,6 +13,7 @@
   });
   const PROSPECT_STATUSES = new Set(["nouveau", "a-relancer", "interesse", "non-interesse", "en-reflexion", "transforme", "archive"]);
   const QUESTIONNAIRE_STATUSES = new Set(["a-envoyer", "envoye", "repondu"]);
+  const STUDENT_PARCOURS = new Set(["point-memoire", "k4", "k5", "rattrapage"]);
 
   function createEmptyProspectResponse() {
     return {
@@ -121,6 +122,7 @@
       : student?.statut === "Archivé" ? "archive" : "nouveau";
     return {
       ...student,
+      parcours: normalizeStudentParcours(student?.parcours),
       statutSuivi,
       echeance: student?.echeance || "",
       urgentManuel: student?.urgentManuel === true,
@@ -382,6 +384,8 @@
     const statutSuivi = archiveRequested
       ? "archive"
       : STATUT_SUIVI_LABELS[studentData.statutSuivi] ? studentData.statutSuivi : "nouveau";
+    const parcours = normalizeStudentParcours(studentData.parcours);
+    if (!parcours) return null;
     const student = {
       id: global.crypto?.randomUUID?.() || `student-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       prenom: studentData.prenom || "",
@@ -391,7 +395,7 @@
       telephone: studentData.telephone || "",
       niveau: studentData.niveau || "",
       dateDebut: studentData.dateDebut || "",
-      parcours: studentData.parcours || "",
+      parcours,
       thematiqueMemoire: studentData.thematiqueMemoire || "",
       statut: archiveRequested ? "Archivé" : studentData.statut || "En cours",
       statutSuivi,
@@ -400,11 +404,11 @@
       notesInitiales: studentData.notesInitiales || "",
       dateCreation: now,
       dateModification: now,
-      donneesParcours: studentData.donneesParcours || {},
+      donneesParcours: isPlainObject(studentData.donneesParcours) ? studentData.donneesParcours : {},
       memoireImporte: studentData.memoireImporte || null,
       livrablesK4: studentData.livrablesK4 || null,
       pointMemoireResume: studentData.pointMemoireResume || null,
-      questionnairePreVisioK4: studentData.questionnairePreVisioK4 || (studentData.parcours === "k4" ? {
+      questionnairePreVisioK4: studentData.questionnairePreVisioK4 || (parcours === "k4" ? {
         formUrl: "",
         sendDraftId: "",
         sendDraftCreatedAt: "",
@@ -541,6 +545,22 @@
     return value === undefined ? "" : String(value).trim();
   }
 
+  function isPlainObject(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function mergeParcoursData(existingData, updatedData) {
+    if (!isPlainObject(updatedData)) return isPlainObject(existingData) ? { ...existingData } : {};
+    return Object.entries(updatedData).reduce((merged, [key, value]) => {
+      if (isPlainObject(value) && isPlainObject(merged[key])) {
+        merged[key] = mergeParcoursData(merged[key], value);
+      } else {
+        merged[key] = value;
+      }
+      return merged;
+    }, isPlainObject(existingData) ? { ...existingData } : {});
+  }
+
   function extractProspectFirstName(fullName) {
     return String(fullName || "").trim().split(/\s+/).filter(Boolean)[0] || "";
   }
@@ -552,7 +572,7 @@
   function normalizeStudentParcours(value) {
     const normalized = String(value || "").trim().toLocaleLowerCase("fr-FR");
     if (["point-memoire", "point mémoire", "point memoire"].includes(normalized)) return "point-memoire";
-    if (["k4", "k5", "rattrapage"].includes(normalized)) return normalized;
+    if (STUDENT_PARCOURS.has(normalized)) return normalized;
     return "";
   }
 
@@ -743,9 +763,18 @@
     }
 
     const archiveRequested = updatedData.statutSuivi === "archive" || updatedData.statut === "Archivé";
+    const hasParcoursUpdate = Object.prototype.hasOwnProperty.call(updatedData, "parcours");
+    const normalizedParcours = normalizeStudentParcours(hasParcoursUpdate ? updatedData.parcours : database.students[index].parcours);
+    if (hasParcoursUpdate && !normalizedParcours) return null;
+    const hasParcoursDataUpdate = Object.prototype.hasOwnProperty.call(updatedData, "donneesParcours");
+    const donneesParcours = hasParcoursDataUpdate
+      ? mergeParcoursData(database.students[index].donneesParcours, updatedData.donneesParcours)
+      : database.students[index].donneesParcours;
     database.students[index] = normalizeStudent({
       ...database.students[index],
       ...updatedData,
+      parcours: normalizedParcours,
+      donneesParcours,
       ...(archiveRequested ? { statut: "Archivé", statutSuivi: "archive" } : {}),
       id,
       dateCreation: database.students[index].dateCreation,

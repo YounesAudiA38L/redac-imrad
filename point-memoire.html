@@ -4,7 +4,7 @@
   <body class="tab-point-memoire">
     <div data-main-nav data-active="point-memoire"></div>
     <main class="app-shell">
-      <header class="topbar"><div><p class="eyebrow">Sois fière de ton mémoire</p><h1>Point Mémoire 60 minutes</h1></div><a class="primary-action" href="index.html?new=point-memoire">Ajouter un étudiant accompagné</a></header>
+      <header class="topbar"><div><p class="eyebrow">Visios diagnostics 60 minutes</p><h1>Point Mémoire</h1></div><a class="primary-action" href="index.html?new=point-memoire">Ajouter un étudiant accompagné</a></header>
       <section class="status-band"><div><p class="eyebrow">Suivi des accompagnements</p><h2>Étudiants du parcours Point Mémoire</h2><p>Retrouvez les fiches déjà créées depuis l’Accueil et leurs informations de préparation pré-visio.</p></div><div class="status-panel"><span class="status-label">Étudiants</span><strong data-parcours-count>0</strong><span class="status-note">Point Mémoire</span></div></section>
 
       <section class="workspace" aria-labelledby="questionnaire-sync-title">
@@ -25,7 +25,7 @@
             <h2 id="point-synthese-title">Synthèse des réponses pré-visio</h2>
           </div>
         </div>
-        <p class="sync-note">Regroupement descriptif des réponses de l’étudiant. À vérifier et ajuster par Audrey.</p>
+        <p class="sync-note">Ajoute des étiquettes comme « Sujet : », « Méthode : » dans le texte pour que les cases se remplissent automatiquement.</p>
         <div class="point-synthese-controls">
           <label class="field">
             <span>Étudiant Point Mémoire</span>
@@ -47,7 +47,7 @@
 
         <section class="point-previsio-documents" aria-labelledby="point-documents-title">
           <h3 id="point-documents-title">Documents et notes pré-visio</h3>
-          <p class="sync-note">Pour un Point Mémoire, 2 à 5 pages suffisent. L’analyse complète du mémoire se fait plutôt dans l’accompagnement K5.</p>
+          <p class="sync-note">Colle ici les 2 à 5 pages transmises par l'étudiant avant la visio. L'analyse complète du mémoire se fait dans l'accompagnement K5.</p>
           <label class="field">
             <span>Pages / extraits transmis par l’étudiant</span>
             <textarea id="point-documents-pages" rows="8" placeholder="Coller ici 2 à 5 pages maximum, des extraits, un plan provisoire ou des éléments utiles pour la visio."></textarea>
@@ -113,8 +113,8 @@
 
           <div class="form-actions point-resume-actions">
             <button class="secondary-action" type="submit" id="save-point-resume" disabled>Enregistrer la fiche</button>
-            <button class="secondary-action" type="button" id="generate-point-resume-doc" disabled>Générer le Google Doc</button>
-            <button class="primary-action" type="button" id="create-point-resume-draft" disabled>Créer le brouillon mail</button>
+            <button class="primary-action" type="button" id="generate-point-resume-doc" disabled>Générer la synthèse dans Drive</button>
+            <button class="secondary-action" type="button" id="create-point-resume-draft" disabled>Préparer le brouillon mail</button>
           </div>
         </form>
 
@@ -127,6 +127,6 @@
 
       <section class="workspace"><div class="section-heading"><div><p class="eyebrow">Fiches étudiant</p><h2>Étudiants accompagnés</h2></div></div><div class="student-grid" data-parcours-students="point-memoire" aria-live="polite"></div></section>
     </main>
-    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="js/storage.js?v=25" defer></script><script src="grille-point-memoire.js?v=6" defer></script><script src="js/questionnaire-sync.js?v=11" defer></script><script src="parcours.js?v=20260625-1" defer></script><script src="js/point-memoire-synthese.js?v=1" defer></script><script src="js/point-memoire-resume.js?v=3" defer></script>
+    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="constants/parcours.js" defer></script><script src="database/local-storage-database.js?v=25" defer></script><script src="database/sqlite-adapter.todo.js" defer></script><script src="database/index.js" defer></script><script src="repositories/student-repository.js" defer></script><script src="repositories/prospect-repository.js" defer></script><script src="repositories/settings-repository.js" defer></script><script src="services/student-service.js" defer></script><script src="services/prospect-service.js" defer></script><script src="services/settings-service.js" defer></script><script src="services/browser-storage-service.js" defer></script><script src="services/app-data-service.js" defer></script><script src="grille-point-memoire.js?v=6" defer></script><script src="forms/questionnaire-sync.js?v=11" defer></script><script src="components/parcours/parcours-page.js?v=20260625-1" defer></script><script src="pages/point-memoire/point-memoire-synthese.js?v=1" defer></script><script src="pages/point-memoire/point-memoire-resume.js?v=3" defer></script>
   </body>
 </html>

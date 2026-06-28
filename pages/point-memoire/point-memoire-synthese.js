@@ -1,5 +1,5 @@
 (function initializePointMemoireSynthese(global) {
-  const storage = global.RedacStorage;
+  const storage = global.RedacServices.appData;
   const studentSelect = document.querySelector("#point-synthese-student");
   const output = document.querySelector("#point-synthese-output");
   const adjustedTextarea = document.querySelector("#point-synthese-adjusted");
@@ -15,6 +15,10 @@
 
   let currentStudentId = "";
   let currentSyntheseText = "";
+  const FUTURE_BUTTON_TODOS = Object.freeze([
+    "Extraire les éléments",
+  ]);
+  // TODO: créer les boutons listés dans FUTURE_BUTTON_TODOS uniquement lorsque les fonctionnalités correspondantes existent.
 
   const BLOCKS = [
     {
@@ -109,7 +113,7 @@
         { label: "Documents que l’étudiant peut transmettre", direct: ["documents", "documentsTransmis", "documentsDisponibles"], raw: ["documents", "fichiers", "pieces", "pièces"] },
         { label: "Lien de dépôt ou précision sur l’envoi", direct: ["lienDepot", "lienDocuments", "precisionEnvoi"], raw: ["lien", "drive", "depot", "dépôt", "mail"] },
       ],
-      footer: "Pour un Point Mémoire, 2 à 5 pages suffisent. L’analyse complète du mémoire relève plutôt de l’accompagnement K5.",
+      footer: "Colle ici les 2 à 5 pages transmises par l'étudiant avant la visio. L'analyse complète du mémoire se fait dans l'accompagnement K5.",
     },
   ];
 

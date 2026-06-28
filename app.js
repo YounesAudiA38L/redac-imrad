@@ -2,7 +2,7 @@ const STORAGE_KEY = "redacImrad.memoires";
 const TEXT_DB_NAME = "redacImrad";
 const TEXT_STORE_NAME = "textes";
 const EXTRACTION_ERROR =
-  "Le texte du fichier n’a pas pu être extrait. Vérifiez que le document n’est pas scanné sous forme d’image.";
+  "Impossible de lire ce fichier. Vérifie qu'il s'agit bien d'un fichier .docx ou .pdf valide.";
 
 const SECTION_DEFINITIONS = [
   { key: "introduction", title: "Introduction", patterns: ["introduction"] },
@@ -240,7 +240,7 @@ function buildReport(memoire, text) {
       approximateLength: getApproxLength(text),
       comment:
         detectedCount === 0
-          ? "Aucune grande section IMRaD n’a été repérée automatiquement. Le document doit être relu manuellement."
+          ? "Aucune section repérée automatiquement. Tu peux remplir la grille à la main."
           : "Rapport provisoire généré à partir des titres repérés. Cette analyse à vérifier sert d’aide à la relecture.",
       criteres: getCriteriaForSection("syntheseGlobale"),
     },
@@ -506,15 +506,17 @@ function createMemoireCard(memoire) {
   openLink.textContent = "Ouvrir";
 
   const deleteButton = document.createElement("button");
-  deleteButton.className = "secondary-action";
+  deleteButton.className = "destructive-action";
   deleteButton.type = "button";
-  deleteButton.textContent = "Supprimer";
+  deleteButton.textContent = "Supprimer définitivement";
 
   analyzeButton.addEventListener("click", () => {
     analyzeMemoire(memoire, statusInfo.description, analysisState, analyzeButton, openLink);
   });
 
   deleteButton.addEventListener("click", async () => {
+    const confirmed = window.confirm("Supprimer définitivement cet élément ? Cette action est irréversible.");
+    if (!confirmed) return;
     memoires = memoires.filter((item) => item.id !== memoire.id);
     fileRegistry.delete(memoire.id);
     await deleteLargeText(memoire.id).catch(() => {});

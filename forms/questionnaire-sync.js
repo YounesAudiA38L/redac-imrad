@@ -1,8 +1,14 @@
 (function initializeQuestionnaireSync(global) {
+  const browserStorage = global.RedacServices.browserStorage;
   const ENDPOINT_KEY = "redacImrad.questionnaires.endpoint";
   const TREATED_KEY = "redacImrad.questionnaires.treated";
   const CACHE_KEY = "redacImrad.questionnaires.responses";
   const CHECK_INTERVAL = 5 * 60 * 1000;
+  const UI_MESSAGES = Object.freeze({
+    googleNotConfigured: "La connexion à Google n'est pas encore configurée. Renseigne l'URL et le token dans les paramètres.",
+    studentCreated: "Fiche créée. Tu peux maintenant compléter le suivi depuis l'onglet correspondant.",
+    correctionDone: "Correction validée. Le compteur a été mis à jour.",
+  });
 
   const endpointInput = document.querySelector("#questionnaire-endpoint");
   const saveAndCheckButton = document.querySelector("#save-and-check-questionnaires");
@@ -14,14 +20,14 @@
   let latestResponses = loadCachedResponses();
 
   function getQuestionnaireEndpoint() {
-    return global.RedacStorage?.getEffectiveSettings?.().pointMemoire.appsScriptUrl || localStorage.getItem(ENDPOINT_KEY) || "";
+    return global.RedacServices.appData?.getEffectiveSettings?.().pointMemoire.appsScriptUrl || browserStorage.getItem(ENDPOINT_KEY) || "";
   }
 
   function saveQuestionnaireEndpoint(url) {
     const trimmedUrl = String(url || "").trim();
 
     if (!trimmedUrl) {
-      localStorage.removeItem(ENDPOINT_KEY);
+      browserStorage.removeItem(ENDPOINT_KEY);
       return "";
     }
 
@@ -34,25 +40,25 @@
       throw new Error("Utilisez l’URL HTTPS du déploiement Apps Script, et non l’URL directe du Google Sheet.");
     }
 
-    localStorage.setItem(ENDPOINT_KEY, parsedUrl.toString());
+    browserStorage.setItem(ENDPOINT_KEY, parsedUrl.toString());
     return parsedUrl.toString();
   }
 
   function getTreatedIds() {
     try {
-      return new Set(JSON.parse(localStorage.getItem(TREATED_KEY)) || []);
+      return new Set(JSON.parse(browserStorage.getItem(TREATED_KEY)) || []);
     } catch {
       return new Set();
     }
   }
 
   function saveTreatedIds(ids) {
-    localStorage.setItem(TREATED_KEY, JSON.stringify([...ids]));
+    browserStorage.setItem(TREATED_KEY, JSON.stringify([...ids]));
   }
 
   function loadCachedResponses() {
     try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+      const cached = JSON.parse(browserStorage.getItem(CACHE_KEY));
       return Array.isArray(cached) ? cached : [];
     } catch {
       return [];
@@ -104,7 +110,7 @@
     const endpoint = getQuestionnaireEndpoint();
 
     if (!endpoint) {
-      setStatus("Renseignez et enregistrez l’URL Apps Script avant de lancer la vérification.", "warning");
+      setStatus(UI_MESSAGES.googleNotConfigured, "warning");
       return [];
     }
 
@@ -131,7 +137,7 @@
       }
 
       latestResponses = payload.responses.map(normalizeResponse);
-      localStorage.setItem(CACHE_KEY, JSON.stringify(latestResponses));
+      browserStorage.setItem(CACHE_KEY, JSON.stringify(latestResponses));
       renderQuestionnaireResponses(latestResponses);
 
       const newCount = findNewResponses(latestResponses).filter((response) => response.isNew).length;
@@ -218,7 +224,7 @@
   }
 
   function createStudentFromResponse(response) {
-    const database = window.RedacStorage.getDatabase();
+    const database = window.RedacServices.appData.getDatabase();
     const existing = database.students.find((student) => student.donneesParcours?.questionnaireId === response.id);
 
     if (existing) {
@@ -237,7 +243,7 @@
       };
     });
 
-    const student = window.RedacStorage.createStudent({
+    const student = window.RedacServices.appData.createStudent({
       prenom: "",
       nom: response.nom,
       email: response.email,
@@ -261,7 +267,7 @@
 
     markResponseAsTreated(response.id);
     global.dispatchEvent(new CustomEvent("redac:students-changed"));
-    setStatus("La fiche étudiant a été créée dans le parcours Point Mémoire.", "success");
+    setStatus(UI_MESSAGES.studentCreated, "success");
     return student;
   }
 
@@ -271,6 +277,7 @@
     treatedIds.add(id);
     saveTreatedIds(treatedIds);
     renderQuestionnaireResponses(latestResponses);
+    setStatus(UI_MESSAGES.correctionDone, "success");
   }
 
   function formatDate(value) {

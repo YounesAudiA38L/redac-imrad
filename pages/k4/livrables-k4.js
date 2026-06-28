@@ -1,6 +1,18 @@
 (function initializeK4Deliverables(global) {
+  const browserStorage = global.RedacServices.browserStorage;
   const ENDPOINT_KEY = "redacImrad.k4Deliverables.endpoint";
   const VALID_STATUSES = new Set(["à générer", "généré", "brouillon créé", "envoyé", "erreur"]);
+  const UI_MESSAGES = Object.freeze({
+    noDeliverableSelected: "Aucun livrable sélectionné. Coche au moins un livrable avant de préparer le brouillon.",
+    googleNotConfigured: "La connexion à Google n'est pas encore configurée. Renseigne l'URL et le token dans les paramètres.",
+    draftPrepared: "Brouillon préparé dans Gmail. À vérifier et envoyer par Audrey.",
+    documentGenerated: "Document généré dans Drive. Tu peux le modifier avant d'envoyer le brouillon.",
+    correctionDone: "Correction validée. Le compteur a été mis à jour.",
+  });
+  const FUTURE_BUTTON_TODOS = Object.freeze([
+    "Préparer le brouillon mail",
+  ]);
+  // TODO: créer les boutons listés dans FUTURE_BUTTON_TODOS uniquement lorsque les fonctionnalités correspondantes existent séparément.
   const DEFINITIONS = {
     fiche_cadrage_sujet: "Fiche de cadrage du sujet",
     trame_question_recherche: "Trame de question de recherche",
@@ -47,7 +59,7 @@
   }
 
   function getEndpoint() {
-    return localStorage.getItem(ENDPOINT_KEY) || "";
+    return browserStorage.getItem(ENDPOINT_KEY) || "";
   }
 
   function saveEndpoint(url) {
@@ -55,7 +67,7 @@
     if (parsed.protocol !== "https:" || parsed.hostname !== "script.google.com" || !parsed.pathname.includes("/macros/")) {
       throw new Error("Utilisez l’URL HTTPS du déploiement Apps Script des livrables K4.");
     }
-    localStorage.setItem(ENDPOINT_KEY, parsed.toString());
+    browserStorage.setItem(ENDPOINT_KEY, parsed.toString());
     return parsed.toString();
   }
 
@@ -67,14 +79,14 @@
   }
 
   function getStudent(studentId) {
-    const student = global.RedacStorage.getStudentById(studentId);
+    const student = global.RedacServices.appData.getStudentById(studentId);
     return student?.parcours === "k4" ? student : null;
   }
 
   function ensureStudentLivrables(student) {
     const normalized = normalizeLivrables(student.livrablesK4);
     if (!student.livrablesK4 || JSON.stringify(student.livrablesK4) !== JSON.stringify(normalized)) {
-      return global.RedacStorage.updateStudent(student.id, { livrablesK4: normalized });
+      return global.RedacServices.appData.updateStudent(student.id, { livrablesK4: normalized });
     }
     return student;
   }
@@ -107,7 +119,7 @@
     if (!student) return null;
     const livrablesK4 = normalizeLivrables(student.livrablesK4);
     updater(livrablesK4);
-    return global.RedacStorage.updateStudent(studentId, { livrablesK4 });
+    return global.RedacServices.appData.updateStudent(studentId, { livrablesK4 });
   }
 
   function updateLivrableK4Status(studentId, livrableId, status) {
@@ -135,8 +147,8 @@
     });
 
     if (updated) {
-      global.RedacStorage.updateStudent(studentId, { livrablesK4FolderUrl: result.folderUrl || "" });
-      renderLivrablesK4Selector(global.RedacStorage.getStudentById(studentId));
+      global.RedacServices.appData.updateStudent(studentId, { livrablesK4FolderUrl: result.folderUrl || "" });
+      renderLivrablesK4Selector(global.RedacServices.appData.getStudentById(studentId));
     }
     return updated;
   }
@@ -165,13 +177,13 @@
     const selectedLivrables = getSelectedLivrablesK4(studentId);
     if (!student) return null;
     if (selectedLivrables.length === 0) {
-      setCardStatus(studentId, "Sélectionnez au moins un document à envoyer.", "warning");
+      setCardStatus(studentId, UI_MESSAGES.noDeliverableSelected, "warning");
       return null;
     }
 
     const endpoint = getEndpoint();
     if (!endpoint) {
-      setCardStatus(studentId, "Enregistrez d’abord l’URL Apps Script livrables K4.", "warning");
+      setCardStatus(studentId, UI_MESSAGES.googleNotConfigured, "warning");
       return null;
     }
 
@@ -191,13 +203,13 @@
         throw new Error("La réponse Apps Script ne respecte pas le format attendu.");
       }
       saveGeneratedK4LivrableLinks(studentId, result);
-      setCardStatus(studentId, `${result.message || "Brouillon mail créé."} À vérifier par Audrey.`, "success");
+      setCardStatus(studentId, result.draftCreated ? UI_MESSAGES.draftPrepared : UI_MESSAGES.documentGenerated, "success");
       return result;
     } catch (error) {
       updateStudentLivrables(studentId, (livrables) => {
         selectedLivrables.forEach((id) => { livrables[id].statut = "erreur"; });
       });
-      renderLivrablesK4Selector(global.RedacStorage.getStudentById(studentId));
+      renderLivrablesK4Selector(global.RedacServices.appData.getStudentById(studentId));
       setCardStatus(studentId, `La création du brouillon a échoué : ${error.message}`, "error");
       return null;
     } finally {
@@ -240,14 +252,14 @@
   function markSelectedAsSent(studentId) {
     const selected = getSelectedLivrablesK4(studentId);
     if (selected.length === 0) {
-      setCardStatus(studentId, "Sélectionnez au moins un document avant de le marquer comme envoyé.", "warning");
+      setCardStatus(studentId, UI_MESSAGES.noDeliverableSelected, "warning");
       return;
     }
     const updated = updateStudentLivrables(studentId, (livrables) => {
       selected.forEach((id) => { livrables[id].statut = "envoyé"; });
     });
     renderLivrablesK4Selector(updated);
-    setCardStatus(studentId, "Les documents sélectionnés sont marqués comme envoyés.", "success");
+    setCardStatus(studentId, UI_MESSAGES.correctionDone, "success");
   }
 
   function renderLivrablesK4Selector(student) {
@@ -291,8 +303,8 @@
     });
 
     const actions = document.createElement("div"); actions.className = "student-k4-deliverable-actions";
-    const draftButton = document.createElement("button"); draftButton.className = "primary-action"; draftButton.type = "button"; draftButton.textContent = "Créer le brouillon mail avec les documents sélectionnés"; draftButton.disabled = getSelectedLivrablesK4(student.id).length === 0; draftButton.addEventListener("click", () => createK4DraftWithSelectedLivrables(student.id));
-    const sentButton = document.createElement("button"); sentButton.className = "secondary-action"; sentButton.type = "button"; sentButton.textContent = "Marquer comme envoyé"; sentButton.addEventListener("click", () => markSelectedAsSent(student.id));
+    const draftButton = document.createElement("button"); draftButton.className = "primary-action"; draftButton.type = "button"; draftButton.textContent = "Préparer les livrables dans Drive"; draftButton.disabled = getSelectedLivrablesK4(student.id).length === 0; draftButton.addEventListener("click", () => createK4DraftWithSelectedLivrables(student.id));
+    const sentButton = document.createElement("button"); sentButton.className = "secondary-action"; sentButton.type = "button"; sentButton.textContent = "Marquer comme faite"; sentButton.addEventListener("click", () => markSelectedAsSent(student.id));
     actions.append(draftButton, sentButton);
     const message = document.createElement("p"); message.className = "form-message k4-livrables-status"; message.dataset.k4LivrablesStatus = ""; message.hidden = true;
     section.append(title, subtitle, list);
@@ -302,7 +314,7 @@
 
   function renderAllK4Selectors() {
     if (!k4PageContainer) return;
-    global.RedacStorage.getStudentsByParcours("k4").forEach(renderLivrablesK4Selector);
+    global.RedacServices.appData.getStudentsByParcours("k4").forEach(renderLivrablesK4Selector);
   }
 
   if (endpointInput) endpointInput.value = getEndpoint();
