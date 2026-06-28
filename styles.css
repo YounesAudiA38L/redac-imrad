@@ -2817,8 +2817,25 @@ p {
   color: #3d617d;
 }
 
+.accueil-notification-row.is-rattrapage {
+  border-left-color: #8b6f9f;
+  background: #f1edf6;
+  color: #574168;
+}
+
 .accueil-notification-row strong {
   font-size: 0.9rem;
+}
+
+.accueil-notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.accueil-notification-status {
+  margin-top: 10px;
 }
 
 @media (max-width: 620px) {

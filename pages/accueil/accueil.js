@@ -105,6 +105,13 @@ const UI_MESSAGES = Object.freeze({
   appsScriptNotConfigured: "La connexion à Google n'est pas encore configurée. Renseigne l'URL et le token dans les paramètres.",
   missingToken: "Le token de connexion est manquant. Vérifie la configuration dans les paramètres.",
   noStudentSelected: "Aucun étudiant sélectionné. Choisis un étudiant dans la liste avant de continuer.",
+  missingStudentEmail: "Aucune adresse e-mail pour cet étudiant. Renseigne-la dans la fiche avant de continuer.",
+  missingRattrapageAppsScriptUrl: "L'URL Apps Script n'est pas configurée. Vérifie la configuration Rattrapage.",
+  missingRattrapageToken: "Le token de connexion est manquant. Vérifie la configuration Rattrapage.",
+  missingRattrapageSuiviForm: "Le lien du questionnaire de suivi J+15 est manquant.",
+  missingRattrapageSessionDate: "La date de session de rattrapage est manquante.",
+  rattrapageJ15DraftPrepared: "Brouillon du suivi J+15 préparé. À vérifier et envoyer par Audrey.",
+  rattrapageJ15Ignored: "Notification J+15 ignorée.",
   studentCreated: "Fiche créée. Tu peux maintenant compléter le suivi depuis l'onglet correspondant.",
   studentArchived: "Dossier archivé. Tu peux le retrouver dans les filtres.",
   prospectConverted: "Prospect transformé en étudiant. La fiche a été créée dans l'onglet correspondant.",
@@ -558,11 +565,151 @@ function appendTaskRow(container, label, count, status, tone = "") {
 
 function parseDateValue(value) {
   if (!value) return null;
+  const isoDate = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoDate) return new Date(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]));
   const frenchDate = String(value).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   const date = frenchDate
     ? new Date(Number(frenchDate[3]), Number(frenchDate[2]) - 1, Number(frenchDate[1]))
     : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getCalendarDayNumber(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+}
+
+function getDaysSince(date) {
+  const dateDay = getCalendarDayNumber(date);
+  const today = new Date();
+  const todayDay = getCalendarDayNumber(today);
+  return dateDay === null || todayDay === null ? null : todayDay - dateDay;
+}
+
+function formatNotificationTemplate(template, student, date) {
+  const name = `${student.prenom || ""} ${student.nom || ""}`.trim() || "Étudiant sans nom";
+  const formattedDate = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  return template.replace("[Prénom Nom]", name).replace("[date]", formattedDate);
+}
+
+function getRattrapageSuivi(student) {
+  const suivi = student?.donneesParcours?.suiviRattrapage;
+  return suivi && typeof suivi === "object" ? suivi : {};
+}
+
+function isArchivedStudentForNotification(student) {
+  return student?.statut === "Archivé" || normalizeSearchText(student?.statutSuivi) === "archive";
+}
+
+function shouldShowRattrapageJ15Notification(student) {
+  if (normalizeParcours(student?.parcours) !== "rattrapage") return false;
+  if (isArchivedStudentForNotification(student)) return false;
+  const suivi = getRattrapageSuivi(student);
+  if (suivi.rappelJ15Envoye === true || suivi.rappelJ15Ignore === true || suivi.reponduLe) return false;
+  const dateSession = parseDateValue(suivi.dateSession);
+  if (!dateSession) return false;
+  const elapsedDays = getDaysSince(dateSession);
+  return elapsedDays !== null && elapsedDays >= 15;
+}
+
+function buildRequestUrl(endpoint, action, token, payload) {
+  const url = new URL(endpoint);
+  url.search = "";
+  return `${url.toString()}?action=${encodeURIComponent(action)}&token=${encodeURIComponent(token)}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
+}
+
+function getRattrapageJ15Config(student) {
+  const settings = storage.getEffectiveSettings?.().rattrapage || {};
+  const suivi = getRattrapageSuivi(student);
+  return {
+    endpoint: settings.endpointRattrapage || settings.responsesAppsScriptUrl || "",
+    token: settings.tokenRattrapage || settings.token || "",
+    lienForms: settings.lienFormsSuiviRattrapage || suivi.lienForms || "",
+  };
+}
+
+function updateRattrapageSuivi(student, updatedSuivi) {
+  return storage.updateStudent(student.id, {
+    donneesParcours: {
+      suiviRattrapage: {
+        ...getRattrapageSuivi(student),
+        ...updatedSuivi,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+}
+
+async function prepareRattrapageJ15Draft(studentId, statusElement) {
+  const student = storage.getStudentById(studentId);
+  if (!student) return;
+  const config = getRattrapageJ15Config(student);
+  const suivi = getRattrapageSuivi(student);
+  if (!suivi.dateSession) throw new Error(UI_MESSAGES.missingRattrapageSessionDate);
+  if (!student.email) throw new Error(UI_MESSAGES.missingStudentEmail);
+  if (!config.endpoint) throw new Error(UI_MESSAGES.missingRattrapageAppsScriptUrl);
+  if (!config.token) throw new Error(UI_MESSAGES.missingRattrapageToken);
+  if (!config.lienForms) throw new Error(UI_MESSAGES.missingRattrapageSuiviForm);
+
+  const payload = {
+    action: "envoyer_questionnaire",
+    email: student.email,
+    prenom: student.prenom || "",
+    nom: student.nom || "",
+    lienForms: config.lienForms,
+    parcours: "rattrapage",
+    typeQuestionnaire: "suivi_j15_rattrapage",
+    token: config.token,
+  };
+  const requestUrl = buildRequestUrl(config.endpoint, "envoyer_questionnaire", config.token, payload);
+  statusElement.textContent = "Préparation du brouillon J+15 en cours.";
+  statusElement.dataset.statusType = "loading";
+  statusElement.hidden = false;
+
+  const response = await fetch(requestUrl, { cache: "no-store" });
+  const data = await response.json();
+  if (data.success === false) throw new Error(data.error || "Apps Script a signalé une erreur.");
+  if (!response.ok || data.success !== true) throw new Error("Apps Script n’a pas confirmé la préparation du brouillon.");
+
+  updateRattrapageSuivi(student, {
+    rappelJ15Envoye: true,
+    rappelJ15EnvoyeLe: data.envoyeLe || data.sendDraftCreatedAt || new Date().toISOString(),
+  });
+  renderPilotage();
+}
+
+function ignoreRattrapageJ15Notification(studentId) {
+  const student = storage.getStudentById(studentId);
+  if (!student) return false;
+  const confirmed = window.confirm("Ignorer cette notification J+15 Rattrapage ?");
+  if (!confirmed) return false;
+  updateRattrapageSuivi(student, {
+    rappelJ15Ignore: true,
+    rappelJ15IgnoreLe: new Date().toISOString(),
+  });
+  renderPilotage();
+  return true;
+}
+
+function createRattrapageJ15Notification(student) {
+  const suivi = getRattrapageSuivi(student);
+  const dateSession = parseDateValue(suivi.dateSession);
+  if (!dateSession) return null;
+  const text = formatNotificationTemplate(NOTIFICATION_MESSAGE_TEMPLATES.rattrapageJ15, student, dateSession);
+  return {
+    id: `rattrapage-j15-${student.id}`,
+    type: "rattrapage-j15",
+    priority: 0,
+    text,
+    message: text,
+    tone: "rattrapage",
+    studentId: student.id,
+    actionable: true,
+    actions: [
+      { id: "prepare-rattrapage-j15-draft", label: "Préparer le brouillon", className: "primary-action" },
+      { id: "ignore-rattrapage-j15", label: "Ignorer", className: "secondary-action" },
+    ],
+  };
 }
 
 function renderDeadlines(students) {
@@ -600,14 +747,16 @@ function renderDeadlines(students) {
 
 function renderNotifications(students) {
   notificationsList.textContent = "";
-  const notifications = students.map((student) => {
+  const notifications = students.flatMap((student) => {
     const name = `${student.prenom || ""} ${student.nom || ""}`.trim() || "Étudiant sans nom";
     const deadlineLevel = storage.getNiveauEcheance(student);
-    if (student.statutSuivi === "a-relancer" && deadlineLevel === "depassee") return { priority: 1, message: `Relance en retard — ${name}`, tone: "late" };
-    if (storage.isUrgent(student)) return { priority: 2, message: `Échéance urgente — ${name}`, tone: "urgent" };
-    if (student.statutSuivi === "questionnaire-recu") return { priority: 3, message: `Nouveau questionnaire reçu — ${name}`, tone: "received" };
-    return null;
-  }).filter(Boolean).sort((left, right) => left.priority - right.priority);
+    const items = [];
+    if (student.statutSuivi === "a-relancer" && deadlineLevel === "depassee") items.push({ priority: 1, message: `Relance en retard — ${name}`, tone: "late" });
+    if (storage.isUrgent(student)) items.push({ priority: 2, message: `Échéance urgente — ${name}`, tone: "urgent" });
+    if (student.statutSuivi === "questionnaire-recu") items.push({ priority: 3, message: `Nouveau questionnaire reçu — ${name}`, tone: "received" });
+    if (shouldShowRattrapageJ15Notification(student)) items.push(createRattrapageJ15Notification(student));
+    return items.filter(Boolean);
+  }).sort((left, right) => left.priority - right.priority);
 
   if (!notifications.length) {
     const empty = document.createElement("p");
@@ -620,9 +769,52 @@ function renderNotifications(students) {
   notifications.forEach((notification) => {
     const row = document.createElement("article");
     row.className = `accueil-notification-row is-${notification.tone}`;
+    if (notification.id) row.dataset.notificationId = notification.id;
+    if (notification.type) row.dataset.notificationType = notification.type;
     const content = document.createElement("strong");
-    content.textContent = notification.message;
+    content.textContent = notification.text || notification.message;
     row.append(content);
+    const actionableActions = notification.actionable ? (notification.actions || []) : [];
+    if (actionableActions.length) {
+      const actions = document.createElement("div");
+      actions.className = "accueil-notification-actions";
+      const status = document.createElement("p");
+      status.className = "form-message accueil-notification-status";
+      status.hidden = true;
+      actionableActions.forEach((action) => {
+        const button = document.createElement("button");
+        button.className = action.className;
+        button.type = "button";
+        button.textContent = action.label;
+        button.addEventListener("click", async () => {
+          try {
+            Array.from(actions.querySelectorAll("button")).forEach((item) => { item.disabled = true; });
+            if (notification.type === "rattrapage-j15" && action.id === "prepare-rattrapage-j15-draft") {
+              await prepareRattrapageJ15Draft(notification.studentId, status);
+              status.textContent = UI_MESSAGES.rattrapageJ15DraftPrepared;
+            } else if (notification.type === "rattrapage-j15" && action.id === "ignore-rattrapage-j15") {
+              const ignored = await ignoreRattrapageJ15Notification(notification.studentId);
+              if (!ignored) {
+                Array.from(actions.querySelectorAll("button")).forEach((item) => { item.disabled = false; });
+                return;
+              }
+              status.textContent = UI_MESSAGES.rattrapageJ15Ignored;
+            } else {
+              return;
+            }
+            status.dataset.statusType = "success";
+            status.hidden = false;
+          } catch (error) {
+            status.textContent = error.message;
+            status.dataset.statusType = "error";
+            status.hidden = false;
+            Array.from(actions.querySelectorAll("button")).forEach((item) => { item.disabled = false; });
+          }
+        });
+        actions.append(button);
+      });
+      row.append(actions, status);
+    }
     notificationsList.append(row);
   });
 }

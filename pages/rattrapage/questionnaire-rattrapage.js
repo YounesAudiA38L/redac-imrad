@@ -102,6 +102,7 @@
     fetchResponses: document.querySelector("#fetch-rattrapage-questionnaire-responses"),
     status: document.querySelector("#rattrapage-questionnaire-status"),
     summary: document.querySelector("#rattrapage-questionnaire-summary"),
+    suiviStudentSelect: document.querySelector("[data-rattrapage-suivi-student-select]"),
     suiviFormUrl: document.querySelector("#rattrapage-suivi-form-url"),
     suiviSheetId: document.querySelector("#rattrapage-suivi-sheet-id"),
     saveSuiviConfig: document.querySelector("#save-rattrapage-suivi-config"),
@@ -113,7 +114,7 @@
     suiviStatus: document.querySelector("#rattrapage-suivi-status"),
     suiviSummary: document.querySelector("#rattrapage-suivi-summary"),
   };
-  if (!elements.studentSelect || !elements.summary) return;
+  if (!elements.studentSelect || !elements.suiviStudentSelect || !elements.summary) return;
 
   function normalizeSearchValue(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").trim();
@@ -191,6 +192,11 @@
 
   function getSelectedRattrapageStudent() {
     const student = services.getStudentById(elements.studentSelect.value);
+    return student?.parcours === "rattrapage" ? student : null;
+  }
+
+  function getSelectedRattrapageSuiviStudent() {
+    const student = services.getStudentById(elements.suiviStudentSelect.value);
     return student?.parcours === "rattrapage" ? student : null;
   }
 
@@ -498,7 +504,7 @@
       const results = responses.map((response) => associateSuiviJ15ResponseToStudent(normalizeSuiviJ15Response(response)));
       const associated = results.filter((result) => result.student).length;
       const unmatched = results.length - associated;
-      const selected = getSelectedRattrapageStudent();
+      const selected = getSelectedRattrapageSuiviStudent();
       if (selected) renderSuiviJ15Summary(services.getStudentById(selected.id));
       setMessage(elements.suiviStatus, `${associated} réponse(s) J+15 associée(s). ${unmatched} réponse(s) non associée(s).`, associated ? "success" : "warning");
     } catch (error) {
@@ -580,28 +586,35 @@
     elements.suiviSummary.append(list);
   }
 
-  function renderRattrapageStudentSelector(selectedId = elements.studentSelect.value) {
-    const students = services.getStudentsByParcours("rattrapage")
-      .slice()
-      .sort((left, right) => `${left.nom || ""} ${left.prenom || ""}`.localeCompare(`${right.nom || ""} ${right.prenom || ""}`, "fr"));
-    elements.studentSelect.textContent = "";
+  function renderStudentSelect(select, students, selectedId, emptyLabel, placeholderLabel) {
+    select.textContent = "";
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = students.length ? "Sélectionner un étudiant Rattrapage" : "Aucun étudiant Rattrapage actif";
-    elements.studentSelect.append(placeholder);
+    placeholder.textContent = students.length ? placeholderLabel : emptyLabel;
+    select.append(placeholder);
     students.forEach((student) => {
       const option = document.createElement("option");
       option.value = student.id;
       option.textContent = `${student.prenom || ""} ${student.nom || ""}`.trim() || student.email || "Étudiant sans nom";
-      elements.studentSelect.append(option);
+      select.append(option);
     });
-    if (students.some((student) => student.id === selectedId)) elements.studentSelect.value = selectedId;
-    elements.studentSelect.disabled = students.length === 0;
+    if (students.some((student) => student.id === selectedId)) select.value = selectedId;
+    select.disabled = students.length === 0;
+  }
+
+  function renderRattrapageStudentSelector(selectedId = elements.studentSelect.value) {
+    const suiviSelectedId = elements.suiviStudentSelect.value;
+    const students = services.getStudentsByParcours("rattrapage")
+      .slice()
+      .sort((left, right) => `${left.nom || ""} ${left.prenom || ""}`.localeCompare(`${right.nom || ""} ${right.prenom || ""}`, "fr"));
+    renderStudentSelect(elements.studentSelect, students, selectedId, "Aucun étudiant Rattrapage actif", "Sélectionner un étudiant Rattrapage");
+    renderStudentSelect(elements.suiviStudentSelect, students, suiviSelectedId, "Aucun étudiant Rattrapage disponible", "Choisir un étudiant Rattrapage");
     const selected = getSelectedRattrapageStudent();
+    const selectedSuivi = getSelectedRattrapageSuiviStudent();
     renderQuestionnaireEntreeSummary(selected);
-    renderSuiviJ15Summary(selected);
+    renderSuiviJ15Summary(selectedSuivi);
     setMessage(elements.status, selected ? "" : UI_MESSAGES.noStudentSelected, selected ? "neutral" : "warning");
-    setMessage(elements.suiviStatus, selected ? "" : UI_MESSAGES.noStudentSelected, selected ? "neutral" : "warning");
+    setMessage(elements.suiviStatus, selectedSuivi ? "" : UI_MESSAGES.noStudentSelected, selectedSuivi ? "neutral" : "warning");
   }
 
   function applyMotifsRefusSuggestion(student, questionnaireData) {
@@ -640,14 +653,17 @@
   elements.studentSelect.addEventListener("change", () => {
     const student = getSelectedRattrapageStudent();
     renderQuestionnaireEntreeSummary(student);
-    renderSuiviJ15Summary(student);
     setMessage(elements.status, student ? "" : UI_MESSAGES.noStudentSelected, student ? "neutral" : "warning");
+  });
+  elements.suiviStudentSelect.addEventListener("change", () => {
+    const student = getSelectedRattrapageSuiviStudent();
+    renderSuiviJ15Summary(student);
     setMessage(elements.suiviStatus, student ? "" : UI_MESSAGES.noStudentSelected, student ? "neutral" : "warning");
   });
   elements.prepareDraft.addEventListener("click", () => prepareQuestionnaireEntreeDraft(getSelectedRattrapageStudent()));
   elements.fetchResponses.addEventListener("click", fetchQuestionnaireEntreeResponses);
-  elements.saveSessionDate.addEventListener("click", () => saveRattrapageSessionDate(getSelectedRattrapageStudent()));
-  elements.prepareSuiviDraft.addEventListener("click", () => prepareSuiviJ15Draft(getSelectedRattrapageStudent()));
+  elements.saveSessionDate.addEventListener("click", () => saveRattrapageSessionDate(getSelectedRattrapageSuiviStudent()));
+  elements.prepareSuiviDraft.addEventListener("click", () => prepareSuiviJ15Draft(getSelectedRattrapageSuiviStudent()));
   elements.fetchSuiviResponses.addEventListener("click", fetchSuiviJ15Responses);
   global.addEventListener("redac:parcours-rendered", (event) => {
     if (event.detail?.parcours === "rattrapage") renderRattrapageStudentSelector();
@@ -655,6 +671,7 @@
 
   global.QuestionnaireEntreeRattrapage = Object.freeze({
     getSelectedRattrapageStudent,
+    getSelectedRattrapageSuiviStudent,
     getQuestionnaireEntree,
     getSuiviRattrapage,
     saveQuestionnaireConfig,
