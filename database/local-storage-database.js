@@ -220,6 +220,7 @@
     const k4Config = privateConfig.k4 || {};
     const k5Config = privateConfig.k5 || {};
     const rattrapageConfig = privateConfig.rattrapage || {};
+    const rattrapageSettings = settings.rattrapage || {};
 
     return {
       agenda: {
@@ -264,8 +265,24 @@
       },
       rattrapage: {
         formsStatsUrl: localOrPrivate(statsLinks.rattrapage, rattrapageConfig.formsStatsUrl),
-        responsesAppsScriptUrl: localOrPrivate(readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesUrl"), rattrapageConfig.responsesAppsScriptUrl),
-        token: localOrPrivate(readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesToken"), rattrapageConfig.token),
+        responsesAppsScriptUrl: localOrPrivate(
+          rattrapageSettings.endpointRattrapage || rattrapageSettings.responsesAppsScriptUrl || readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesUrl"),
+          rattrapageConfig.responsesAppsScriptUrl,
+        ),
+        token: localOrPrivate(
+          rattrapageSettings.tokenRattrapage || rattrapageSettings.token || readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesToken"),
+          rattrapageConfig.token,
+        ),
+        endpointRattrapage: localOrPrivate(
+          rattrapageSettings.endpointRattrapage || rattrapageSettings.responsesAppsScriptUrl || readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesUrl"),
+          rattrapageConfig.endpointRattrapage || rattrapageConfig.responsesAppsScriptUrl,
+        ),
+        tokenRattrapage: localOrPrivate(
+          rattrapageSettings.tokenRattrapage || rattrapageSettings.token || readLocalStorage("redacImrad.rattrapageQuestionnaire.responsesToken"),
+          rattrapageConfig.tokenRattrapage || rattrapageConfig.token,
+        ),
+        lienFormsEntreeRattrapage: localOrPrivate(rattrapageSettings.lienFormsEntreeRattrapage, rattrapageConfig.lienFormsEntreeRattrapage),
+        sheetIdEntreeRattrapage: localOrPrivate(rattrapageSettings.sheetIdEntreeRattrapage, rattrapageConfig.sheetIdEntreeRattrapage),
       },
     };
   }
@@ -314,6 +331,31 @@
     };
     saveDatabase(database);
     return database.settings.formsStatsLinks;
+  }
+
+  function getRattrapageSettings() {
+    return getEffectiveSettings().rattrapage;
+  }
+
+  function saveRattrapageSettings(settings) {
+    const database = getDatabase();
+    const current = database.settings.rattrapage || {};
+    const endpointRattrapage = String(settings?.endpointRattrapage || settings?.responsesAppsScriptUrl || "").trim();
+    const tokenRattrapage = String(settings?.tokenRattrapage || settings?.token || "").trim();
+    database.settings = {
+      ...database.settings,
+      rattrapage: {
+        ...current,
+        lienFormsEntreeRattrapage: String(settings?.lienFormsEntreeRattrapage || "").trim(),
+        sheetIdEntreeRattrapage: String(settings?.sheetIdEntreeRattrapage || "").trim(),
+        endpointRattrapage,
+        tokenRattrapage,
+        responsesAppsScriptUrl: endpointRattrapage,
+        token: tokenRattrapage,
+      },
+    };
+    saveDatabase(database);
+    return getRattrapageSettings();
   }
 
   function getProspectsFormUrl() {
@@ -876,6 +918,8 @@
     saveProspectsMailTemplate,
     getFormsStatsLinks,
     saveFormsStatsLinks,
+    getRattrapageSettings,
+    saveRattrapageSettings,
     getEffectiveSettings,
   });
 })(window);

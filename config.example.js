@@ -31,5 +31,9 @@ window.REDAC_IMRAD_PRIVATE_CONFIG = {
     formsStatsUrl: "",
     responsesAppsScriptUrl: "",
     token: "",
+    endpointRattrapage: "",
+    tokenRattrapage: "",
+    lienFormsEntreeRattrapage: "",
+    sheetIdEntreeRattrapage: "",
   },
 };

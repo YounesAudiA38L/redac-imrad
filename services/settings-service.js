@@ -19,6 +19,8 @@
     saveProspectsMailTemplate: settings.saveProspectsMailTemplate,
     getFormsStatsLinks: settings.getFormsStatsLinks,
     saveFormsStatsLinks: settings.saveFormsStatsLinks,
+    getRattrapageSettings: settings.getRattrapageSettings,
+    saveRattrapageSettings: settings.saveRattrapageSettings,
   });
 
   global.RedacServices = Object.freeze({
