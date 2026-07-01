@@ -463,6 +463,7 @@
       echeance: studentData.echeance || "",
       urgentManuel: studentData.urgentManuel === true,
       notesInitiales: studentData.notesInitiales || "",
+      sourceProspectId: studentData.sourceProspectId || "",
       dateCreation: now,
       dateModification: now,
       donneesParcours: isPlainObject(studentData.donneesParcours) ? studentData.donneesParcours : {},
@@ -696,15 +697,34 @@
     return [notes, sectionTitle, buildProspectQuestionnaireNotes(prospect, response)].filter(Boolean).join("\n\n");
   }
 
+  function createProspectOriginTrace(prospect, convertedAt) {
+    return {
+      prospectId: prospect.id,
+      convertedAt,
+      source: prospect.source || prospect.provenance || "",
+      dateContact: prospect.dateContact || "",
+      parcoursInteresse: prospect.parcoursInteresse || "",
+      parcoursPressenti: prospect.parcoursPressenti || "",
+      parcoursValide: prospect.parcoursValide || "",
+      questionnaireEnvoyeLe: prospect.questionnaireEnvoyeLe || "",
+      questionnaireReponduLe: prospect.questionnaireReponduLe || "",
+      relanceEnvoyeeLe: prospect.relanceEnvoyeeLe || "",
+      relanceCount: Number(prospect.relanceCount) || 0,
+    };
+  }
+
   function convertProspectToStudent(id, studentData = {}) {
     const prospect = getProspectById(id);
     if (!prospect) return null;
     const existingStudentId = prospect.studentId || prospect.convertedStudentId;
     const response = prospect.reponseQuestionnaireProspect || createEmptyProspectResponse();
+    const convertedAt = new Date().toISOString();
+    const origineProspect = createProspectOriginTrace(prospect, convertedAt);
     if (existingStudentId) {
       const existingStudent = getStudentById(existingStudentId);
       if (existingStudent) {
         const updatedStudent = updateStudent(existingStudentId, {
+          sourceProspectId: existingStudent.sourceProspectId || prospect.id,
           prenom: getFirstFilledValue(
             existingStudent.prenom,
             studentData.prenom,
@@ -724,8 +744,8 @@
           telephone: getFirstFilledValue(existingStudent.telephone, studentData.telephone, prospect.telephone, response.telephone),
           ifmk: getFirstFilledValue(existingStudent.ifmk, studentData.ifmk, prospect.ifmk, response.ifmk),
           niveau: getFirstFilledValue(existingStudent.niveau, studentData.niveau, prospect.niveau, response.niveau, response.annee),
-          parcours: existingStudent.parcours
-            || normalizeStudentParcours(studentData.parcours)
+          parcours: normalizeStudentParcours(studentData.parcours)
+            || existingStudent.parcours
             || normalizeStudentParcours(prospect.parcoursValide)
             || normalizeStudentParcours(prospect.parcoursPressenti)
             || normalizeStudentParcours(prospect.parcoursVise),
@@ -745,8 +765,10 @@
             ...(existingStudent.donneesParcours || {}),
             ...(studentData.donneesParcours || {}),
             questionnaireProspect: response,
+            origineProspect: existingStudent.donneesParcours?.origineProspect || studentData.donneesParcours?.origineProspect || origineProspect,
           },
         });
+        if (!updatedStudent?.id) return null;
         updateProspect(id, {
           statut: "converti en étudiant",
           statutProspect: "transforme",
@@ -800,17 +822,20 @@
         || response.avancementMemoire
         || "",
       notesInitiales,
+      sourceProspectId: prospect.id,
       donneesParcours: {
         questionnaireProspect: response,
         ...(studentData.donneesParcours || {}),
+        origineProspect: studentData.donneesParcours?.origineProspect || origineProspect,
       },
     });
+    if (!student?.id) return null;
     updateProspect(id, {
       statut: "converti en étudiant",
       statutProspect: "transforme",
       studentId: student.id,
       convertedStudentId: student.id,
-      dateConversion: new Date().toISOString(),
+      dateConversion: convertedAt,
     });
     return student;
   }

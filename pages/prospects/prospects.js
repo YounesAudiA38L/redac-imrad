@@ -90,6 +90,7 @@ Audrey`,
 
   const storage = global.RedacServices.appData;
   let convertingProspectId = null;
+  let editingProspectId = null;
   let pendingRelancePlan = null;
   let archivesVisible = false;
   const expandedResponseProspectIds = new Set();
@@ -374,33 +375,111 @@ Audrey`,
     return button;
   }
 
+  function appendParcoursOptions(select, includeUndefined = false) {
+    const options = includeUndefined
+      ? [{ value: "", label: "Non défini" }]
+      : [{ value: "", label: "Sélectionner" }];
+    options.push(
+      { value: "point-memoire", label: "Point Mémoire" },
+      { value: "k4", label: "K4" },
+      { value: "k5", label: "K5" },
+      { value: "rattrapage", label: "Rattrapage" },
+    );
+    options.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label;
+      select.append(option);
+    });
+  }
+
+  function createTextField(name, label, value = "", type = "text") {
+    const field = document.createElement("label");
+    field.className = "field";
+    const title = document.createElement("span");
+    title.textContent = label;
+    const input = document.createElement("input");
+    input.name = name;
+    input.type = type;
+    input.value = value || "";
+    field.append(title, input);
+    return field;
+  }
+
+  function createParcoursField(name, label, value = "") {
+    const field = document.createElement("label");
+    field.className = "field";
+    const title = document.createElement("span");
+    title.textContent = label;
+    const select = document.createElement("select");
+    select.name = name;
+    appendParcoursOptions(select, true);
+    const normalized = normalizeProspectParcours(value);
+    select.value = parcoursLabels[normalized] ? normalized : "";
+    field.append(title, select);
+    return field;
+  }
+
+  function createProspectEditForm(prospect) {
+    const form = document.createElement("form");
+    form.className = "prospect-edit-form";
+    form.dataset.prospectEditForm = "";
+
+    const grid = document.createElement("div");
+    grid.className = "form-grid";
+    grid.append(
+      createTextField("prenom", "Prénom", prospect.prenom),
+      createTextField("nom", "Nom", prospect.nom),
+      createTextField("email", "Email", getProspectEmail(prospect), "email"),
+      createTextField("telephone", "Téléphone", prospect.telephone || getProspectResponse(prospect).telephone, "tel"),
+      createTextField("ifmk", "IFMK", prospect.ifmk || getProspectResponse(prospect).ifmk),
+      createTextField("niveau", "Niveau / année", getProspectNiveau(prospect)),
+      createParcoursField("parcoursPressenti", "Parcours pressenti", getProspectParcoursPressenti(prospect)),
+      createParcoursField("parcoursValide", "Parcours validé", prospect.parcoursValide),
+      createTextField("source", "Provenance", prospect.source || prospect.provenance || ""),
+    );
+
+    const notesField = document.createElement("label");
+    notesField.className = "field full-width";
+    const notesLabel = document.createElement("span");
+    notesLabel.textContent = "Notes";
+    const notes = document.createElement("textarea");
+    notes.name = "notes";
+    notes.rows = 4;
+    notes.value = prospect.notes || "";
+    notesField.append(notesLabel, notes);
+    grid.append(notesField);
+
+    const actions = document.createElement("div");
+    actions.className = "prospect-edit-actions";
+    actions.append(
+      createActionButton("Enregistrer les modifications", "save-edit", "primary-action"),
+      createActionButton("Annuler", "cancel-edit", "secondary-action"),
+    );
+
+    form.append(grid, actions);
+    return form;
+  }
+
   function createConversionChoice(prospect) {
     const panel = document.createElement("div");
     panel.className = "prospect-conversion-choice";
-    const label = document.createElement("label");
-    label.className = "field";
-    const title = document.createElement("span");
-    title.textContent = "Choisir le parcours étudiant";
-    const select = document.createElement("select");
-    select.dataset.conversionParcours = "";
-    [{ value: "", label: "Sélectionner" }, { value: "point-memoire", label: "Point Mémoire" }, { value: "k4", label: "K4" }, { value: "k5", label: "K5" }, { value: "rattrapage", label: "Rattrapage" }]
-      .forEach((item) => {
-        const option = document.createElement("option");
-        option.value = item.value;
-        option.textContent = item.label;
-        select.append(option);
-      });
-    const suggested = normalizeProspectParcours(prospect.parcoursValide)
-      || normalizeProspectParcours(getProspectParcoursPressenti(prospect));
-    if (parcoursLabels[suggested]) select.value = suggested;
-    label.append(title, select);
+    const title = document.createElement("p");
+    title.className = "prospect-conversion-title";
+    title.textContent = "Transformer en étudiant";
     const actions = document.createElement("div");
     actions.className = "prospect-conversion-actions";
-    actions.append(
-      createActionButton("Créer la fiche étudiant", "confirm-convert", "primary-action"),
-      createActionButton("Annuler", "cancel-convert", "secondary-action"),
-    );
-    panel.append(label, actions);
+    [
+      { value: "point-memoire", label: "Point Mémoire" },
+      { value: "k4", label: "K4" },
+      { value: "k5", label: "K5" },
+      { value: "rattrapage", label: "Rattrapage" },
+    ].forEach((item) => {
+      const button = createActionButton(item.label, "confirm-convert", "secondary-action");
+      button.dataset.conversionParcours = item.value;
+      actions.append(button);
+    });
+    panel.append(title, actions);
     return panel;
   }
 
@@ -679,9 +758,9 @@ Audrey`,
         "secondary-action",
       ));
       actions.append(
+        createActionButton("Modifier le prospect", "edit", "secondary-action"),
         createActionButton("Préparer le questionnaire", "send-questionnaire", "primary-action", !email || prospect.questionnaireRepondu === true),
         createActionButton("Préparer la relance", "send-relance", "secondary-action", !isProspectToRelance(prospect)),
-        createActionButton("Transformer en étudiant", "convert", "primary-action"),
         createActionButton("Archiver le prospect", "archive", "destructive-action"),
       );
 
@@ -689,7 +768,8 @@ Audrey`,
       if (expandedResponseProspectIds.has(prospect.id)) {
         card.append(createQuestionnaireResponsePanel(prospect));
       }
-      if (convertingProspectId === prospect.id) card.append(createConversionChoice(prospect));
+      if (editingProspectId === prospect.id) card.append(createProspectEditForm(prospect));
+      card.append(createConversionChoice(prospect));
       card.append(actions);
       elements.list.append(card);
     });
@@ -880,6 +960,28 @@ Audrey`,
       if (!confirmed) return;
       storage.archiveProspect(prospect.id);
       setMessage(elements.actionStatus, "Prospect archivé.", "success");
+    } else if (action === "edit") {
+      editingProspectId = prospect.id;
+      convertingProspectId = null;
+    } else if (action === "save-edit") {
+      const form = button.closest("[data-prospect-edit-form]");
+      const data = new FormData(form);
+      storage.updateProspect(prospect.id, {
+        prenom: String(data.get("prenom") || "").trim(),
+        nom: String(data.get("nom") || "").trim(),
+        email: String(data.get("email") || "").trim(),
+        telephone: String(data.get("telephone") || "").trim(),
+        ifmk: String(data.get("ifmk") || "").trim(),
+        niveau: String(data.get("niveau") || "").trim(),
+        parcoursPressenti: data.get("parcoursPressenti") || "",
+        parcoursValide: data.get("parcoursValide") || "",
+        source: String(data.get("source") || "").trim(),
+        notes: String(data.get("notes") || "").trim(),
+      });
+      editingProspectId = null;
+      setMessage(elements.actionStatus, "Prospect mis à jour.", "success");
+    } else if (action === "cancel-edit") {
+      editingProspectId = null;
     } else if (action === "restore-archive") {
       const statutProspect = getProspectStatusAfterRestore(prospect);
       storage.updateProspect(prospect.id, {
@@ -888,6 +990,10 @@ Audrey`,
       });
       setMessage(elements.archivesStatus || elements.actionStatus, "Prospect restauré.", "success");
     } else if (action === "delete-archive") {
+      const hadLinkedStudent = Boolean(prospect.studentId || prospect.convertedStudentId);
+      if (hadLinkedStudent) {
+        window.alert("Ce prospect est lié à une fiche étudiant. Supprimer définitivement le prospect ne supprimera pas l’étudiant, mais supprimera l’historique prospect local : réponses, relances, dates et notes associées.");
+      }
       const confirmed = window.confirm("Supprimer définitivement cette fiche prospect ? Cette action est irréversible. Les données locales associées seront supprimées de Redac-IMRaD.");
       if (!confirmed) return;
       const typedConfirmation = window.prompt("Pour confirmer la suppression définitive, tape SUPPRIMER.");
@@ -895,7 +1001,6 @@ Audrey`,
         setMessage(elements.archivesStatus || elements.actionStatus, "Suppression annulée.", "warning");
         return;
       }
-      const hadLinkedStudent = Boolean(prospect.studentId || prospect.convertedStudentId);
       storage.deleteProspect(prospect.id);
       setMessage(
         elements.archivesStatus || elements.actionStatus,
@@ -905,23 +1010,22 @@ Audrey`,
         "success",
       );
     } else if (action === "convert") {
-      const parcours = normalizeProspectParcours(prospect.parcoursValide)
-        || normalizeProspectParcours(getProspectParcoursPressenti(prospect));
-      if (parcoursLabels[parcours]) {
-        storage.convertProspectToStudent(prospect.id, { parcours });
-        setMessage(elements.actionStatus, UI_MESSAGES.prospectConverted, "success");
-      } else {
-        convertingProspectId = prospect.id;
-        setMessage(elements.actionStatus, "Choisissez le parcours étudiant avant la conversion.", "warning");
-      }
+      convertingProspectId = prospect.id;
+      editingProspectId = null;
+      setMessage(elements.actionStatus, "Choisissez le parcours étudiant avant la conversion.", "warning");
     } else if (action === "confirm-convert") {
-      const parcours = card.querySelector("[data-conversion-parcours]")?.value || "";
+      const parcours = button.dataset.conversionParcours || "";
       if (!parcoursLabels[parcours]) {
         setMessage(elements.actionStatus, "Choisissez un parcours étudiant.", "error");
         return;
       }
-      storage.updateProspect(prospect.id, { parcoursValide: parcours });
-      storage.convertProspectToStudent(prospect.id, { parcours });
+      const confirmed = window.confirm(`Transformer ce prospect en étudiant dans le parcours ${parcoursLabels[parcours]} ?`);
+      if (!confirmed) return;
+      const student = storage.convertProspectToStudent(prospect.id, { parcours });
+      if (!student?.id) {
+        setMessage(elements.actionStatus, "La fiche étudiant n’a pas pu être créée. Le prospect n’a pas été transformé.", "error");
+        return;
+      }
       convertingProspectId = null;
       setMessage(elements.actionStatus, UI_MESSAGES.prospectConverted, "success");
     } else if (action === "cancel-convert") {

@@ -3360,6 +3360,21 @@ input[type="file"]::file-selector-button {
   background: #f0f5f2;
 }
 
+.prospect-edit-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #cbd9d2;
+  border-radius: 8px;
+  background: #f0f5f2;
+}
+
+.prospect-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .prospect-conversion-actions {
   display: flex;
   flex-wrap: wrap;
