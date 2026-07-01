@@ -15,12 +15,12 @@
           <label class="field"><span>Lien Google Forms du questionnaire d’entrée</span><input id="rattrapage-questionnaire-form-url" type="url" inputmode="url" placeholder="https://docs.google.com/forms/..." /></label>
           <label class="field"><span>ID Google Sheets des réponses</span><input id="rattrapage-questionnaire-sheet-id" type="text" autocomplete="off" /></label>
         </div>
-        <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-questionnaire-config">Enregistrer la configuration</button></div>
+        <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-questionnaire-config">Enregistrer la configuration du questionnaire d’entrée</button></div>
         <p class="sync-note">Le logiciel prépare uniquement un brouillon. Audrey reste responsable de sa vérification et de son envoi.</p>
         <p id="rattrapage-questionnaire-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
         <div class="rattrapage-questionnaire-student-panel panel">
           <label class="field"><span>Étudiant Rattrapage</span><select id="rattrapage-questionnaire-student"></select></label>
-          <div class="form-actions"><button class="primary-action" type="button" id="prepare-rattrapage-questionnaire-draft">Préparer le brouillon du questionnaire d’entrée</button><button class="primary-action" type="button" id="fetch-rattrapage-questionnaire-responses">Récupérer les réponses</button></div>
+          <div class="form-actions"><button class="primary-action" type="button" id="prepare-rattrapage-questionnaire-draft">Préparer le brouillon du questionnaire d’entrée</button><button class="primary-action" type="button" id="fetch-rattrapage-questionnaire-responses">Récupérer les réponses du questionnaire d’entrée</button></div>
           <p id="rattrapage-questionnaire-status" class="form-message" role="status" aria-live="polite">Aucun étudiant sélectionné. Choisis un étudiant Rattrapage avant de continuer.</p>
           <section class="rattrapage-questionnaire-summary" aria-labelledby="rattrapage-questionnaire-summary-title">
             <h3 id="rattrapage-questionnaire-summary-title">Résumé des réponses reçues</h3>
@@ -34,7 +34,7 @@
           <label class="field"><span>Lien Google Forms du questionnaire de suivi J+15</span><input id="rattrapage-suivi-form-url" type="url" inputmode="url" placeholder="https://docs.google.com/forms/..." /></label>
           <label class="field"><span>ID Google Sheets des réponses J+15</span><input id="rattrapage-suivi-sheet-id" type="text" autocomplete="off" /></label>
         </div>
-        <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-suivi-config">Enregistrer la configuration</button></div>
+        <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-suivi-config">Enregistrer la configuration du suivi J+15</button></div>
         <p id="rattrapage-suivi-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
         <div class="rattrapage-suivi-student-panel panel">
           <label class="field"><span>Étudiant concerné par le suivi J+15</span><select data-rattrapage-suivi-student-select><option value="">Choisir un étudiant Rattrapage</option></select></label>
@@ -56,7 +56,7 @@
           <label class="field"><span>ID du template Google Docs “Synthèse de reprise Rattrapage”</span><input id="rattrapage-synthese-template-id" type="text" autocomplete="off" /></label>
           <label class="field"><span>ID du dossier Drive “Étudiants”</span><input id="rattrapage-synthese-folder-id" type="text" autocomplete="off" /></label>
         </div>
-        <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-synthese-config">Enregistrer la configuration</button></div>
+        <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-synthese-config">Enregistrer la configuration de la synthèse de reprise</button></div>
         <p id="rattrapage-synthese-config-status" class="form-message" role="status" aria-live="polite" hidden></p>
         <div class="rattrapage-synthese-student-panel panel">
           <label class="field"><span>Étudiant Rattrapage</span><select data-rattrapage-synthese-student-select><option value="">Choisir un étudiant Rattrapage</option></select></label>
@@ -71,15 +71,15 @@
             <label class="field"><span>Priorité 3</span><textarea data-synthese-field="priorite3" rows="3"></textarea></label>
             <label class="field full-width"><span>Notes globales d’Audrey</span><textarea data-synthese-field="notesGlobales" rows="5"></textarea></label>
           </div>
-          <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-synthese-data">Enregistrer la synthèse</button><button class="primary-action" type="button" id="generate-rattrapage-synthese-drive">Générer la synthèse de reprise dans Drive</button></div>
+          <div class="form-actions"><button class="secondary-action" type="button" id="save-rattrapage-synthese-data">Enregistrer les informations de synthèse de reprise</button><button class="primary-action" type="button" id="generate-rattrapage-synthese-drive">Générer la synthèse de reprise dans Drive</button></div>
           <div id="rattrapage-synthese-result" class="rattrapage-synthese-result" aria-live="polite">
             <p><strong>Statut :</strong> <span data-rattrapage-synthese-status>Aucun étudiant sélectionné. Choisis un étudiant Rattrapage avant de continuer.</span></p>
-            <a class="secondary-action" data-rattrapage-synthese-document-link href="#" target="_blank" rel="noopener noreferrer" hidden>Ouvrir dans Drive</a>
+            <a class="secondary-action" data-rattrapage-synthese-document-link href="#" target="_blank" rel="noopener noreferrer" hidden>Ouvrir la synthèse dans Drive</a>
             <p class="form-message" data-rattrapage-synthese-message role="status" aria-live="polite" hidden></p>
           </div>
         </div>
       </section>
     </main>
-    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="constants/parcours.js" defer></script><script src="database/local-storage-database.js?v=27" defer></script><script src="database/sqlite-adapter.todo.js" defer></script><script src="database/index.js" defer></script><script src="repositories/student-repository.js" defer></script><script src="repositories/prospect-repository.js" defer></script><script src="repositories/settings-repository.js?v=2" defer></script><script src="services/student-service.js" defer></script><script src="services/prospect-service.js" defer></script><script src="services/settings-service.js?v=1" defer></script><script src="services/browser-storage-service.js" defer></script><script src="services/app-data-service.js" defer></script><script src="components/parcours/parcours-page.js?v=20260701-1" defer></script><script src="pages/rattrapage/questionnaire-rattrapage.js?v=6" defer></script><script src="pages/rattrapage/synthese-reprise-rattrapage.js?v=1" defer></script>
+    <script src="config.private.js"></script><script src="navigation.js?v=20260625-1" defer></script><script src="constants/parcours.js" defer></script><script src="database/local-storage-database.js?v=27" defer></script><script src="database/sqlite-adapter.todo.js" defer></script><script src="database/index.js" defer></script><script src="repositories/student-repository.js" defer></script><script src="repositories/prospect-repository.js" defer></script><script src="repositories/settings-repository.js?v=2" defer></script><script src="services/student-service.js" defer></script><script src="services/prospect-service.js" defer></script><script src="services/settings-service.js?v=1" defer></script><script src="services/browser-storage-service.js" defer></script><script src="services/app-data-service.js" defer></script><script src="components/parcours/parcours-page.js?v=20260701-2" defer></script><script src="pages/rattrapage/questionnaire-rattrapage.js?v=6" defer></script><script src="pages/rattrapage/synthese-reprise-rattrapage.js?v=1" defer></script>
   </body>
 </html>

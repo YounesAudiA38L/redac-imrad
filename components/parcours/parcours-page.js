@@ -32,7 +32,7 @@
       "Préparer le brouillon mail",
       "Enregistrer le planning",
       "Ajouter une visio",
-      "Marquer comme faite",
+      "Marquer la visio comme faite",
       "Supprimer cette visio",
       "Enregistrer la préparation soutenance",
       "Récupérer les réponses du questionnaire",
@@ -49,7 +49,7 @@
       "Convertir les signaux en corrections",
       "Enregistrer le plan de reprise",
       "Ajouter une visio",
-      "Marquer comme faite",
+      "Marquer la visio comme faite",
       "Supprimer cette visio",
       "Enregistrer la préparation orale",
       "Générer le plan de correction dans Drive",
@@ -406,8 +406,8 @@
 
     const actions = document.createElement("div");
     actions.className = "student-card-actions";
-    const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Ouvrir la fiche";
-    const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier le suivi";
+    const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Voir le dossier";
+    const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier la fiche";
     const archived = isStudentArchived(student);
     const archive = document.createElement("button"); archive.className = "destructive-action"; archive.type = "button"; archive.textContent = archived ? "Archivé" : "Archiver le dossier"; archive.disabled = archived;
     archive.addEventListener("click", () => {
@@ -468,7 +468,7 @@
     const restore = document.createElement("button");
     restore.className = "secondary-action archive-restore-action";
     restore.type = "button";
-    restore.textContent = "Restaurer";
+    restore.textContent = "Restaurer le dossier";
     restore.addEventListener("click", () => {
       const restoredStudent = storage.restoreStudent(student.id);
       if (restoredStudent?.dateArchivage) storage.updateStudent(student.id, { dateArchivage: "" });

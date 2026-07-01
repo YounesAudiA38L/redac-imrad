@@ -420,7 +420,7 @@
     draftButton.className = "secondary-action";
     draftButton.type = "button";
     draftButton.dataset.createK4QuestionnaireDraft = "";
-    draftButton.textContent = "Préparer le questionnaire";
+    draftButton.textContent = "Préparer le questionnaire K4";
     draftButton.addEventListener("click", () => createQuestionnaireDraft(student.id));
 
     const panelId = `k4-questionnaire-${student.id}`;

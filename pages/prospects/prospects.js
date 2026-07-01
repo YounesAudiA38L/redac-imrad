@@ -682,7 +682,7 @@ Audrey`,
         createActionButton("Préparer le questionnaire", "send-questionnaire", "primary-action", !email || prospect.questionnaireRepondu === true),
         createActionButton("Préparer la relance", "send-relance", "secondary-action", !isProspectToRelance(prospect)),
         createActionButton("Transformer en étudiant", "convert", "primary-action"),
-        createActionButton("Archiver", "archive", "destructive-action"),
+        createActionButton("Archiver le prospect", "archive", "destructive-action"),
       );
 
       card.append(main);
@@ -737,7 +737,7 @@ Audrey`,
       ));
     }
     const restore = createActionButton(
-      status === "transforme" ? "Restaurer dans Prospects" : "Restaurer",
+      "Restaurer le prospect",
       "restore-archive",
       "secondary-action",
     );
@@ -751,7 +751,7 @@ Audrey`,
       actions.append(linkedStudent);
     }
 
-    actions.append(createActionButton("Supprimer définitivement", "delete-archive", "destructive-action archive-delete-action"));
+    actions.append(createActionButton("Supprimer définitivement le prospect", "delete-archive", "destructive-action archive-delete-action"));
     card.append(content, actions);
     if (expandedResponseProspectIds.has(prospect.id)) {
       card.append(createQuestionnaireResponsePanel(prospect));

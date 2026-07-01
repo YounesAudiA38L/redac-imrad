@@ -128,8 +128,8 @@ const NOTIFICATION_MESSAGE_TEMPLATES = Object.freeze({
   rattrapageJ15: "[Prénom Nom] — session rattrapage du [date]. J+15 : envoyer le questionnaire de suivi ?",
 });
 const FUTURE_BUTTON_TODOS = Object.freeze({
-  notifications: ["Préparer le brouillon", "Ignorer"],
-  deadlines: ["Voir la fiche", "Préparer le brouillon"],
+  notifications: ["Préparer le brouillon", "Ignorer ce rappel"],
+  deadlines: ["Voir le dossier", "Préparer le brouillon"],
   mailTemplates: ["Préparer le brouillon Gmail", "Enregistrer l’URL Apps Script"],
   deleteStudentPermanently: ["Supprimer définitivement"],
 });
@@ -488,8 +488,8 @@ function createStudentCard(student) {
   });
 
   const actions = document.createElement("div"); actions.className = "student-card-actions";
-  const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Voir la fiche";
-  const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier";
+  const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Voir le dossier";
+  const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier la fiche";
   const archive = document.createElement("button"); archive.className = "destructive-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver le dossier"; archive.disabled = student.statut === "Archivé";
   archive.addEventListener("click", () => {
     const confirmed = window.confirm("Confirmer l’archivage de ce dossier ?");
@@ -733,7 +733,7 @@ function createRattrapageJ15Notification(student) {
     actionable: true,
     actions: [
       { id: "prepare-rattrapage-j15-draft", label: "Préparer le brouillon", className: "primary-action" },
-      { id: "ignore-rattrapage-j15", label: "Ignorer", className: "secondary-action" },
+      { id: "ignore-rattrapage-j15", label: "Ignorer ce rappel", className: "secondary-action" },
     ],
   };
 }
@@ -1426,7 +1426,7 @@ async function addGoogleAppointment(event) {
     "&payload=" + encodeURIComponent(JSON.stringify(payload));
 
   appointmentButton.disabled = true;
-  appointmentButton.textContent = "Ajout en cours";
+  appointmentButton.textContent = "Création en cours";
   setAppointmentMessage(`Ajout dans l’agenda ${CALENDAR_ID} en cours.`, "");
 
   try {
@@ -1440,7 +1440,7 @@ async function addGoogleAppointment(event) {
   } catch (error) {
     setAppointmentMessage(`L’ajout a échoué : ${error.message}`, "error");
   } finally {
-    appointmentButton.textContent = "Ajouter à l’agenda";
+    appointmentButton.textContent = "Créer le rendez-vous dans Google Agenda";
     appointmentButton.disabled = appointmentContactSelect.disabled;
   }
 }

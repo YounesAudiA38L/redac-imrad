@@ -131,7 +131,7 @@
             <label class="field"><span>Durée</span><select id="agenda-duree" name="dureeMinutes" required><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option><option value="90">90 min</option></select></label>
             <label class="field full-width"><span>Notes</span><textarea id="agenda-notes" name="notes" rows="4" placeholder="Informations utiles pour le rendez-vous"></textarea></label>
           </div>
-          <div class="appointment-actions"><button class="primary-action" id="prepare-google-appointment" type="submit">Ajouter à l’agenda</button></div>
+          <div class="appointment-actions"><button class="primary-action" id="prepare-google-appointment" type="submit">Créer le rendez-vous dans Google Agenda</button></div>
           <p id="appointment-message" class="form-message" role="status" aria-live="polite" hidden></p>
         </form>
       </section>
@@ -192,8 +192,8 @@
         </div>
         <p class="config-backup-warning">Ce fichier peut contenir des liens privés et des tokens Apps Script. Ne pas le publier sur GitHub. À conserver uniquement dans le Google Drive privé d’Audrey.</p>
         <div class="config-backup-actions">
-          <button class="primary-action" type="button" id="export-private-config">Exporter la configuration</button>
-          <button class="secondary-action" type="button" id="import-private-config">Importer une configuration</button>
+          <button class="primary-action" type="button" id="export-private-config">Exporter la configuration privée</button>
+          <button class="secondary-action" type="button" id="import-private-config">Importer une configuration privée</button>
           <input id="private-config-file" type="file" accept=".json,application/json" hidden />
         </div>
         <p id="private-config-message" class="form-message" role="status" aria-live="polite" hidden></p>
@@ -214,7 +214,7 @@
     <script src="services/browser-storage-service.js" defer></script>
     <script src="services/app-data-service.js" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
-    <script src="pages/k4/livrables-k4.js?v=12" defer></script>
-    <script src="pages/accueil/accueil.js?v=26" defer></script>
+    <script src="pages/k4/livrables-k4.js?v=20260701-2" defer></script>
+    <script src="pages/accueil/accueil.js?v=20260701-2" defer></script>
   </body>
 </html>

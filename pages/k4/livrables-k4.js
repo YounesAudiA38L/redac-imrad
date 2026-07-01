@@ -304,7 +304,7 @@
 
     const actions = document.createElement("div"); actions.className = "student-k4-deliverable-actions";
     const draftButton = document.createElement("button"); draftButton.className = "primary-action"; draftButton.type = "button"; draftButton.textContent = "Préparer les livrables dans Drive"; draftButton.disabled = getSelectedLivrablesK4(student.id).length === 0; draftButton.addEventListener("click", () => createK4DraftWithSelectedLivrables(student.id));
-    const sentButton = document.createElement("button"); sentButton.className = "secondary-action"; sentButton.type = "button"; sentButton.textContent = "Marquer comme faite"; sentButton.addEventListener("click", () => markSelectedAsSent(student.id));
+    const sentButton = document.createElement("button"); sentButton.className = "secondary-action"; sentButton.type = "button"; sentButton.textContent = "Marquer les livrables comme envoyés"; sentButton.addEventListener("click", () => markSelectedAsSent(student.id));
     actions.append(draftButton, sentButton);
     const message = document.createElement("p"); message.className = "form-message k4-livrables-status"; message.dataset.k4LivrablesStatus = ""; message.hidden = true;
     section.append(title, subtitle, list);

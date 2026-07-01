@@ -333,9 +333,9 @@
 
       const actions = document.createElement("div");
       actions.className = "questionnaire-actions";
-      const summaryButton = document.createElement("button"); summaryButton.className = "secondary-action"; summaryButton.type = "button"; summaryButton.textContent = "Créer une synthèse";
+      const summaryButton = document.createElement("button"); summaryButton.className = "secondary-action"; summaryButton.type = "button"; summaryButton.textContent = "Créer une synthèse locale";
       const studentButton = document.createElement("button"); studentButton.className = "primary-action"; studentButton.type = "button"; studentButton.textContent = "Créer une fiche étudiant";
-      const treatedButton = document.createElement("button"); treatedButton.className = "secondary-action"; treatedButton.type = "button"; treatedButton.textContent = response.isNew ? "Marquer comme traité" : "Traité"; treatedButton.disabled = !response.isNew;
+      const treatedButton = document.createElement("button"); treatedButton.className = "secondary-action"; treatedButton.type = "button"; treatedButton.textContent = response.isNew ? "Marquer la réponse comme traitée" : "Réponse traitée"; treatedButton.disabled = !response.isNew;
       const summaryContainer = document.createElement("div"); summaryContainer.className = "questionnaire-summary"; summaryContainer.hidden = true;
 
       summaryButton.addEventListener("click", () => {
