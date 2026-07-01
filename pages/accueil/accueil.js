@@ -6,6 +6,7 @@ const formTitle = document.querySelector("#student-form-title");
 const formMessage = document.querySelector("#student-form-message");
 const saveButton = document.querySelector("#save-student-button");
 const addButton = document.querySelector("#add-student-trigger");
+const addProspectButton = document.querySelector("#add-prospect-trigger");
 const closeButton = document.querySelector("#close-student-form");
 const cancelButton = document.querySelector("#cancel-student-form");
 const parcoursSelect = document.querySelector("#student-parcours");
@@ -18,8 +19,10 @@ const pointAxes = document.querySelector("#student-point-axes");
 const filterButtons = document.querySelectorAll("[data-student-filter]");
 const statusFilter = document.querySelector("#student-status-filter");
 const studentSearchInput = document.querySelector("#student-search");
+const quickProspectWorkspace = document.querySelector("#quick-prospect-workspace");
 const quickProspectForm = document.querySelector("#quick-prospect-form");
 const quickProspectMessage = document.querySelector("#quick-prospect-message");
+const cancelQuickProspectButton = document.querySelector("#cancel-quick-prospect-form");
 const urgentCount = document.querySelector("#urgent-count");
 const todoList = document.querySelector("#todo-list");
 const deadlinesList = document.querySelector("#deadlines-list");
@@ -276,6 +279,7 @@ function showParcoursFields(parcours) {
 }
 
 function openForm(student = null) {
+  closeProspectForm();
   editingStudentId = student?.id || null;
   convertingProspectId = null;
   studentForm.reset();
@@ -301,6 +305,19 @@ function closeForm() {
   showParcoursFields("");
   formWorkspace.hidden = true;
   history.replaceState({}, "", "index.html");
+}
+
+function openProspectForm() {
+  closeForm();
+  quickProspectMessage.hidden = true;
+  quickProspectWorkspace.hidden = false;
+  quickProspectWorkspace.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeProspectForm() {
+  quickProspectForm.reset();
+  quickProspectMessage.hidden = true;
+  quickProspectWorkspace.hidden = true;
 }
 
 function openProspectConversion(prospect) {
@@ -1595,8 +1612,10 @@ renderQuestionnaireStats();
 parcoursSelect.addEventListener("change", () => showParcoursFields(parcoursSelect.value));
 fileInput.addEventListener("change", () => { fileStatus.textContent = fileInput.files?.[0]?.name || "Aucun fichier sélectionné."; });
 addButton.addEventListener("click", () => openForm());
+addProspectButton.addEventListener("click", openProspectForm);
 closeButton.addEventListener("click", closeForm);
 cancelButton.addEventListener("click", closeForm);
+cancelQuickProspectButton.addEventListener("click", closeProspectForm);
 appointmentContactTypeSelect.addEventListener("change", renderAppointmentContacts);
 
 filterButtons.forEach((button) => {

@@ -4,14 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tableau de bord - Redac-IMRaD</title>
-    <link rel="stylesheet" href="styles.css?v=20260701-3" />
+    <link rel="stylesheet" href="styles.css?v=20260701-4" />
   </head>
   <body class="accueil-pilotage tab-accueil">
     <div data-main-nav data-active="accueil"></div>
     <main class="app-shell">
       <header class="topbar" aria-label="En-tête">
         <div><p class="eyebrow">Bienvenue, Audrey</p><h1>Tableau de bord</h1></div>
-        <button class="primary-action" type="button" id="add-student-trigger">Ajouter un étudiant</button>
+        <div class="topbar-actions">
+          <button class="primary-action" type="button" id="add-prospect-trigger">Ajouter un prospect</button>
+          <button class="primary-action" type="button" id="add-student-trigger">Ajouter un étudiant</button>
+        </div>
       </header>
 
       <section class="accueil-overview" aria-label="Recherche et indicateurs">
@@ -23,6 +26,19 @@
           <article class="accueil-counter accueil-counter-active"><span>Actifs</span><strong id="active-student-count">0</strong><small>Étudiants accompagnés</small></article>
           <article class="accueil-counter accueil-counter-urgent"><span>Urgents</span><strong id="urgent-count">0</strong><small>Situations signalées</small></article>
         </div>
+      </section>
+
+      <section class="workspace quick-prospect-workspace" id="quick-prospect-workspace" aria-labelledby="quick-prospect-title" hidden>
+        <div class="section-heading"><div><p class="eyebrow">Nouveau contact</p><h2 id="quick-prospect-title">Ajouter un prospect</h2></div></div>
+        <form id="quick-prospect-form" class="quick-prospect-form">
+          <div class="form-grid">
+            <label class="field"><span>Prénom</span><input name="prenom" type="text" /></label><label class="field"><span>Nom</span><input name="nom" type="text" /></label><label class="field"><span>Email</span><input name="email" type="email" /></label><label class="field"><span>Téléphone</span><input name="telephone" type="tel" /></label>
+            <label class="field"><span>Provenance</span><select name="source"><option value="">Sélectionner</option><option>Instagram</option><option>Facebook</option><option>YouTube</option><option>LinkedIn</option><option>bouche-à-oreille</option><option>autre</option></select></label>
+            <label class="field"><span>Parcours visé</span><select name="parcoursInteresse"><option value="non défini">Non défini</option><option value="point-memoire">Point Mémoire</option><option value="k4">K4</option><option value="k5">K5</option><option value="rattrapage">Rattrapage</option></select></label>
+            <label class="field full-width"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
+          </div>
+          <div class="form-actions"><button class="primary-action" type="submit">Ajouter le prospect</button><button class="secondary-action" type="button" id="cancel-quick-prospect-form">Annuler</button></div><p id="quick-prospect-message" class="form-message" role="status" aria-live="polite" hidden></p>
+        </form>
       </section>
 
       <section class="workspace student-form-workspace" id="student-form-workspace" aria-labelledby="student-form-title" hidden>
@@ -154,19 +170,6 @@
 
       <section class="workspace accueil-block accueil-notifications-block" aria-labelledby="notifications-title"><div class="section-heading"><div><p class="eyebrow">Informations</p><h2 id="notifications-title">Notifications</h2></div></div><p class="sync-note">Rappels générés automatiquement par le logiciel — à valider par Audrey avant envoi.</p><div id="notifications-list" class="accueil-info-list"></div></section>
 
-      <details class="workspace quick-prospect-workspace" id="quick-prospect-workspace">
-        <summary><span><span class="eyebrow">Nouveau contact</span><strong>Ajouter rapidement un prospect</strong></span></summary>
-        <form id="quick-prospect-form" class="quick-prospect-form">
-          <div class="form-grid">
-            <label class="field"><span>Prénom</span><input name="prenom" type="text" /></label><label class="field"><span>Nom</span><input name="nom" type="text" /></label><label class="field"><span>Email</span><input name="email" type="email" /></label><label class="field"><span>Téléphone</span><input name="telephone" type="tel" /></label>
-            <label class="field"><span>Provenance</span><select name="source"><option value="">Sélectionner</option><option>Instagram</option><option>Facebook</option><option>YouTube</option><option>LinkedIn</option><option>bouche-à-oreille</option><option>autre</option></select></label>
-            <label class="field"><span>Parcours visé</span><select name="parcoursInteresse"><option value="non défini">Non défini</option><option value="point-memoire">Point Mémoire</option><option value="k4">K4</option><option value="k5">K5</option><option value="rattrapage">Rattrapage</option></select></label>
-            <label class="field full-width"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
-          </div>
-          <div class="form-actions"><button class="primary-action" type="submit">Ajouter le prospect</button></div><p id="quick-prospect-message" class="form-message" role="status" aria-live="polite" hidden></p>
-        </form>
-      </details>
-
       <section class="workspace home-statistics-section" aria-labelledby="questionnaire-stats-title">
         <div class="section-heading">
           <div><p class="eyebrow">Questionnaires</p><h2 id="questionnaire-stats-title">Statistiques questionnaires</h2></div>
@@ -215,6 +218,6 @@
     <script src="services/app-data-service.js" defer></script>
     <script src="grille-point-memoire.js?v=6" defer></script>
     <script src="pages/k4/livrables-k4.js?v=20260701-2" defer></script>
-    <script src="pages/accueil/accueil.js?v=20260701-3" defer></script>
+    <script src="pages/accueil/accueil.js?v=20260701-4" defer></script>
   </body>
 </html>
