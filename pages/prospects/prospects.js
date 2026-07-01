@@ -247,17 +247,23 @@ Audrey`,
 
   function isActiveProspect(prospect) {
     const status = prospect.statutProspect || "nouveau";
-    return status !== "archive" && status !== "transforme";
+    return status !== "archive" && !isTransformedProspect(prospect);
+  }
+
+  function isTransformedProspect(prospect) {
+    return prospect?.statutProspect === "transforme"
+      || Boolean(prospect?.studentId)
+      || Boolean(prospect?.convertedStudentId);
   }
 
   function getActiveProspects() {
-    if (typeof storage.getActiveProspects === "function") return storage.getActiveProspects();
+    if (typeof storage.getActiveProspects === "function") return storage.getActiveProspects().filter((prospect) => !isTransformedProspect(prospect));
     return storage.getProspects().filter(isActiveProspect);
   }
 
   function getArchivedProspects() {
-    if (typeof storage.getArchivedProspects === "function") return storage.getArchivedProspects();
-    return storage.getProspects().filter((prospect) => !isActiveProspect(prospect));
+    if (typeof storage.getArchivedProspects === "function") return storage.getArchivedProspects().filter((prospect) => !isTransformedProspect(prospect));
+    return storage.getProspects().filter((prospect) => !isActiveProspect(prospect) && !isTransformedProspect(prospect));
   }
 
   function formatDate(value) {
@@ -850,7 +856,7 @@ Audrey`,
     if (!archivedProspects.length) {
       const empty = document.createElement("p");
       empty.className = "empty-state";
-      empty.textContent = "Aucun prospect archivé ou transformé pour le moment.";
+      empty.textContent = "Aucun prospect archivé pour le moment.";
       elements.archivesList.append(empty);
       return;
     }

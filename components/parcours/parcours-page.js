@@ -74,6 +74,7 @@
   let archivesButton = null;
   let parcoursStatus = null;
   let openTransferDropdown = null;
+  const historyOpenStudentIds = new Set();
 
   function normalizeSearchValue(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
@@ -235,6 +236,57 @@
     description.textContent = value || "À renseigner";
     row.append(term, description);
     list.append(row);
+  }
+
+  function hasStudentHistory(student) {
+    const parcoursData = student?.donneesParcours || {};
+    return Boolean(student?.sourceProspectId || parcoursData.origineProspect || parcoursData.questionnaireProspect);
+  }
+
+  function addHistoryDetail(list, label, value) {
+    const normalized = typeof value === "number" ? String(value) : String(value || "").trim();
+    if (!normalized) return;
+    addDetail(list, label, normalized);
+  }
+
+  function formatHistoryDate(value) {
+    return value ? formatDate(value) : "";
+  }
+
+  function createStudentHistoryPanel(student) {
+    const parcoursData = student.donneesParcours || {};
+    const origine = parcoursData.origineProspect || {};
+    const questionnaire = parcoursData.questionnaireProspect || {};
+    const section = document.createElement("section");
+    section.className = "student-history-panel";
+
+    const title = document.createElement("h4");
+    title.textContent = "Historique du dossier";
+    const subtitle = document.createElement("p");
+    subtitle.className = "helper-text";
+    subtitle.textContent = "Entrée initiale";
+
+    const details = document.createElement("dl");
+    addHistoryDetail(details, "Source", origine.prospectId || student.sourceProspectId ? "Prospect" : "");
+    addHistoryDetail(details, "Provenance", origine.source);
+    addHistoryDetail(details, "Date de contact initiale", formatHistoryDate(origine.dateContact));
+    addHistoryDetail(details, "Date de transformation", formatHistoryDate(origine.convertedAt));
+    addHistoryDetail(details, "Parcours pressenti", parcoursLabels[origine.parcoursPressenti] || origine.parcoursPressenti);
+    addHistoryDetail(details, "Parcours validé", parcoursLabels[origine.parcoursValide] || origine.parcoursValide);
+    addHistoryDetail(details, "Parcours choisi", parcoursLabels[student.parcours] || student.parcours);
+    addHistoryDetail(details, "Questionnaire envoyé le", formatHistoryDate(origine.questionnaireEnvoyeLe));
+    addHistoryDetail(details, "Questionnaire répondu le", formatHistoryDate(origine.questionnaireReponduLe || questionnaire.receivedAt));
+    addHistoryDetail(details, "Relance envoyée le", formatHistoryDate(origine.relanceEnvoyeeLe));
+    addHistoryDetail(details, "Nombre de relances", origine.relanceCount);
+    addHistoryDetail(details, "IFMK", questionnaire.ifmk);
+    addHistoryDetail(details, "Niveau", questionnaire.niveau || questionnaire.annee);
+    addHistoryDetail(details, "Avancement mémoire", questionnaire.avancementMemoire);
+    addHistoryDetail(details, "Difficulté principale", questionnaire.difficultePrincipale);
+    addHistoryDetail(details, "Aide souhaitée", questionnaire.aideSouhaitee);
+    addHistoryDetail(details, "Notes disponibles", student.notesInitiales);
+
+    section.append(title, subtitle, details);
+    return section;
   }
 
   function isValidIsoDate(value) {
@@ -418,6 +470,21 @@
       render();
     });
     actions.append(open, edit, archive);
+    if (hasStudentHistory(student)) {
+      const history = document.createElement("button");
+      history.className = "secondary-action";
+      history.type = "button";
+      history.textContent = historyOpenStudentIds.has(student.id) ? "Masquer l’historique" : "Historique du dossier";
+      history.addEventListener("click", () => {
+        if (historyOpenStudentIds.has(student.id)) {
+          historyOpenStudentIds.delete(student.id);
+        } else {
+          historyOpenStudentIds.add(student.id);
+        }
+        render();
+      });
+      actions.append(history);
+    }
 
     if (student.parcours === "point-memoire" && !isStudentArchived(student)) {
       actions.append(createParcoursTransferControl(student));
@@ -434,6 +501,9 @@
       card.append(grid);
     } else {
       card.append(header, details, actions);
+    }
+    if (historyOpenStudentIds.has(student.id) && hasStudentHistory(student)) {
+      card.append(createStudentHistoryPanel(student));
     }
     return card;
   }
