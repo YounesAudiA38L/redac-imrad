@@ -79,6 +79,26 @@
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
   }
 
+  function isStudentArchived(student) {
+    return (
+      student?.statutSuivi === "archive" ||
+      student?.statut === "Archivé" ||
+      student?.statut === "archive" ||
+      student?.archive === true ||
+      Boolean(student?.dateArchivage)
+    );
+  }
+
+  function getAllStudentsForParcours() {
+    const databaseStudents = storage.getDatabase?.().students;
+    if (Array.isArray(databaseStudents)) return databaseStudents.filter((student) => student.parcours === parcours);
+
+    const studentsById = new Map();
+    storage.getStudentsByParcours(parcours).forEach((student) => studentsById.set(student.id, student));
+    storage.getArchivedStudentsByParcours(parcours).forEach((student) => studentsById.set(student.id, student));
+    return Array.from(studentsById.values());
+  }
+
   function createFilterBar() {
     const controls = document.createElement("div");
     controls.className = "filter-bar parcours-filter-bar";
@@ -388,7 +408,8 @@
     actions.className = "student-card-actions";
     const open = document.createElement("a"); open.className = "secondary-action"; open.href = `index.html?student=${encodeURIComponent(student.id)}`; open.textContent = "Ouvrir la fiche";
     const edit = document.createElement("a"); edit.className = "secondary-action"; edit.href = `index.html?student=${encodeURIComponent(student.id)}&edit=1`; edit.textContent = "Modifier le suivi";
-    const archive = document.createElement("button"); archive.className = "destructive-action"; archive.type = "button"; archive.textContent = student.statut === "Archivé" ? "Archivé" : "Archiver le dossier"; archive.disabled = student.statut === "Archivé";
+    const archived = isStudentArchived(student);
+    const archive = document.createElement("button"); archive.className = "destructive-action"; archive.type = "button"; archive.textContent = archived ? "Archivé" : "Archiver le dossier"; archive.disabled = archived;
     archive.addEventListener("click", () => {
       const confirmed = window.confirm("Confirmer l’archivage de ce dossier ?");
       if (!confirmed) return;
@@ -398,7 +419,7 @@
     });
     actions.append(open, edit, archive);
 
-    if (student.parcours === "point-memoire" && student.statut !== "Archivé" && student.statutSuivi !== "archive") {
+    if (student.parcours === "point-memoire" && !isStudentArchived(student)) {
       actions.append(createParcoursTransferControl(student));
     }
 
@@ -449,7 +470,8 @@
     restore.type = "button";
     restore.textContent = "Restaurer";
     restore.addEventListener("click", () => {
-      storage.restoreStudent(student.id);
+      const restoredStudent = storage.restoreStudent(student.id);
+      if (restoredStudent?.dateArchivage) storage.updateStudent(student.id, { dateArchivage: "" });
       render();
       setArchiveStatus("Étudiant restauré.");
     });
@@ -459,8 +481,13 @@
     remove.type = "button";
     remove.textContent = "Supprimer définitivement";
     remove.addEventListener("click", () => {
-      const confirmed = window.confirm("Supprimer définitivement cet élément ? Cette action est irréversible.");
+      const confirmed = window.confirm("Supprimer définitivement cette fiche ? Cette action est irréversible. Les données locales associées seront supprimées de Redac-IMRaD.");
       if (!confirmed) return;
+      const typedConfirmation = window.prompt("Pour confirmer la suppression définitive, tape SUPPRIMER.");
+      if (typedConfirmation !== "SUPPRIMER") {
+        setArchiveStatus("Suppression annulée.");
+        return;
+      }
       storage.deleteStudent(student.id);
       render();
       setArchiveStatus("Étudiant supprimé définitivement.");
@@ -513,7 +540,7 @@
 
   function renderArchives() {
     ensureArchivesSection();
-    const archivedStudents = storage.getArchivedStudentsByParcours(parcours);
+    const archivedStudents = getAllStudentsForParcours().filter(isStudentArchived);
     archivesSection.hidden = !archivesVisible;
     archivesButton.textContent = archivesVisible ? "Masquer les étudiants archivés" : "Voir les étudiants archivés";
 
@@ -531,10 +558,11 @@
   }
 
   function render() {
-    const allStudents = storage.getStudentsByParcours(parcours);
-    if (count) count.textContent = String(allStudents.length);
+    const allStudents = getAllStudentsForParcours();
+    const activeStudents = allStudents.filter((student) => !isStudentArchived(student));
+    if (count) count.textContent = String(activeStudents.length);
     const searchTerm = normalizeSearchValue(termeRechercheParcours.trim());
-    const students = sortStudents(allStudents.filter((student) => {
+    const students = sortStudents(activeStudents.filter((student) => {
       const matchesSearch = !searchTerm || [student.prenom, student.nom, student.email]
         .some((value) => normalizeSearchValue(value).includes(searchTerm));
       const matchesStatus = statutFiltreParcours === "tous" || student.statutSuivi === statutFiltreParcours;
@@ -543,7 +571,7 @@
     }));
     container.textContent = "";
 
-    if (allStudents.length === 0) {
+    if (activeStudents.length === 0) {
       const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "Aucun étudiant accompagné dans ce parcours."; container.append(empty);
     } else if (students.length === 0) {
       const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = urgenceFiltre ? "Aucun étudiant urgent dans ce parcours pour le moment." : "Aucun étudiant ne correspond à ta recherche."; container.append(empty);

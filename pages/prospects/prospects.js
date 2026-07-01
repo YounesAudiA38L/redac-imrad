@@ -888,8 +888,13 @@ Audrey`,
       });
       setMessage(elements.archivesStatus || elements.actionStatus, "Prospect restauré.", "success");
     } else if (action === "delete-archive") {
-      const confirmed = window.confirm("Supprimer définitivement cet élément ? Cette action est irréversible.");
+      const confirmed = window.confirm("Supprimer définitivement cette fiche prospect ? Cette action est irréversible. Les données locales associées seront supprimées de Redac-IMRaD.");
       if (!confirmed) return;
+      const typedConfirmation = window.prompt("Pour confirmer la suppression définitive, tape SUPPRIMER.");
+      if (typedConfirmation !== "SUPPRIMER") {
+        setMessage(elements.archivesStatus || elements.actionStatus, "Suppression annulée.", "warning");
+        return;
+      }
       const hadLinkedStudent = Boolean(prospect.studentId || prospect.convertedStudentId);
       storage.deleteProspect(prospect.id);
       setMessage(
