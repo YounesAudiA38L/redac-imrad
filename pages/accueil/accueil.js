@@ -549,18 +549,169 @@ function applyStatusFilter(status) {
   focusStudentList();
 }
 
-function appendTaskRow(container, label, count, status, tone = "") {
-  if (count <= 0) return;
-  const button = document.createElement("button");
-  button.className = `accueil-todo-row${tone ? ` ${tone}` : ""}`;
-  button.type = "button";
-  const value = document.createElement("strong");
-  value.textContent = String(count);
-  const text = document.createElement("span");
-  text.textContent = label;
-  button.append(value, text);
-  button.addEventListener("click", () => applyStatusFilter(status));
-  container.append(button);
+function getStudentDisplayName(student) {
+  return `${student?.prenom || ""} ${student?.nom || ""}`.trim() || student?.email || "Étudiant sans nom";
+}
+
+function getProspectDisplayName(prospect) {
+  return `${prospect?.prenom || ""} ${prospect?.nom || ""}`.trim()
+    || prospect?.pseudo
+    || prospect?.reponseQuestionnaireProspect?.nomComplet
+    || prospect?.email
+    || "Prospect sans nom";
+}
+
+function isArchivedStudent(student) {
+  return student?.statutSuivi === "archive"
+    || student?.statut === "Archivé"
+    || student?.statut === "archive"
+    || student?.archive === true
+    || Boolean(student?.dateArchivage);
+}
+
+function isActiveProspectForTodo(prospect) {
+  const status = String(prospect?.statutProspect || "").trim().toLocaleLowerCase("fr-FR");
+  const legacyStatus = normalizeSearchText(prospect?.statut);
+  return status !== "archive"
+    && status !== "transforme"
+    && legacyStatus !== "archive"
+    && legacyStatus !== "converti en etudiant";
+}
+
+function isProspectQuestionnaireToPrepare(prospect) {
+  return isActiveProspectForTodo(prospect)
+    && prospect?.questionnaireRepondu !== true
+    && (prospect?.questionnaireStatut === "a-envoyer" || prospect?.questionnaireEnvoye !== true);
+}
+
+function isProspectToRelanceForTodo(prospect) {
+  return isActiveProspectForTodo(prospect)
+    && prospect?.questionnaireEnvoye === true
+    && prospect?.questionnaireRepondu !== true
+    && prospect?.relanceEnvoyee !== true;
+}
+
+function isProspectToTransform(prospect) {
+  return isActiveProspectForTodo(prospect)
+    && prospect?.questionnaireRepondu === true
+    && prospect?.statutProspect !== "transforme"
+    && !prospect?.studentId
+    && !prospect?.convertedStudentId;
+}
+
+function hasSyntheseRepriseData(student) {
+  const synthese = student?.donneesParcours?.syntheseRepriseRattrapage;
+  if (!synthese || typeof synthese !== "object") return false;
+  const data = synthese.donnees && typeof synthese.donnees === "object" ? synthese.donnees : {};
+  return Object.values(data).some((value) => String(value || "").trim());
+}
+
+function createTodoAction({ id, level = "todo", type, label, personName, context, target, targetId, order = 50 }) {
+  return { id, level, type, label, personName, context, target, targetId, order };
+}
+
+function collectTodoActions(students, prospects) {
+  const actions = [];
+  const activeStudents = students.filter((student) => !isArchivedStudent(student));
+
+  activeStudents.forEach((student) => {
+    const personName = getStudentDisplayName(student);
+    const parcours = parcoursLabels[student.parcours] || student.parcours || "Parcours à renseigner";
+    const base = { personName, context: `${parcours} · ${storage.getStatutSuiviLabel(student.statutSuivi)}`, target: "student", targetId: student.id };
+
+    if (student.statutSuivi === "questionnaire-recu") {
+      actions.push(createTodoAction({ ...base, id: `student-questionnaire-recu-${student.id}`, level: "urgent", type: "student-questionnaire-recu", label: "Questionnaire reçu à traiter", order: 10 }));
+    }
+    if (student.statutSuivi === "memoire-importe") {
+      actions.push(createTodoAction({ ...base, id: `student-memoire-${student.id}`, type: "student-memoire", label: "Mémoire à analyser", order: 20 }));
+    }
+    if (student.statutSuivi === "a-relancer") {
+      actions.push(createTodoAction({ ...base, id: `student-relance-${student.id}`, type: "student-relance", label: "Étudiant à relancer", order: 30 }));
+    }
+    if (student.statutSuivi === "questionnaire-envoye") {
+      actions.push(createTodoAction({ ...base, id: `student-questionnaire-envoye-${student.id}`, type: "student-questionnaire-envoye", label: "Questionnaire en attente de réponse", order: 40 }));
+    }
+    if (normalizeParcours(student.parcours) === "rattrapage" && !getRattrapageSuivi(student).dateSession) {
+      actions.push(createTodoAction({ ...base, id: `rattrapage-session-${student.id}`, type: "rattrapage-session", label: "Date de session rattrapage à renseigner", order: 50 }));
+    }
+    const synthese = student.donneesParcours?.syntheseRepriseRattrapage;
+    if (normalizeParcours(student.parcours) === "rattrapage" && hasSyntheseRepriseData(student) && !synthese?.documentUrl) {
+      actions.push(createTodoAction({ ...base, id: `rattrapage-synthese-${student.id}`, type: "rattrapage-synthese", label: "Synthèse de reprise à générer", order: 60 }));
+    }
+  });
+
+  prospects.filter(isActiveProspectForTodo).forEach((prospect) => {
+    const personName = getProspectDisplayName(prospect);
+    const status = prospect.statutProspect || "nouveau";
+    const base = { personName, context: `Prospect · ${status}`, target: "prospect", targetId: prospect.id };
+
+    if (isProspectToTransform(prospect)) {
+      actions.push(createTodoAction({ ...base, id: `prospect-transform-${prospect.id}`, type: "prospect-transform", label: "Prospect répondu à transformer", order: 70 }));
+      return;
+    }
+    if (isProspectToRelanceForTodo(prospect)) {
+      actions.push(createTodoAction({ ...base, id: `prospect-relance-${prospect.id}`, type: "prospect-relance", label: "Prospect à relancer", order: 80 }));
+      return;
+    }
+    if (isProspectQuestionnaireToPrepare(prospect)) {
+      actions.push(createTodoAction({ ...base, id: `prospect-questionnaire-${prospect.id}`, type: "prospect-questionnaire", label: "Questionnaire prospect à préparer", order: 90 }));
+    }
+  });
+
+  const levelOrder = { urgent: 0, todo: 1, watch: 2 };
+  return actions
+    .sort((left, right) => (levelOrder[left.level] - levelOrder[right.level]) || left.order - right.order || left.personName.localeCompare(right.personName, "fr"))
+    .slice(0, 10);
+}
+
+function openTodoTarget(action) {
+  if (action.target === "student") {
+    window.location.href = `index.html?student=${encodeURIComponent(action.targetId)}`;
+    return;
+  }
+  if (action.target === "prospect") {
+    window.location.href = "prospects.html";
+  }
+}
+
+function renderTodoActions(actions) {
+  todoList.textContent = "";
+  if (!actions.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "Aucune action prioritaire pour le moment.";
+    todoList.append(empty);
+    return;
+  }
+
+  const levelLabels = { urgent: "Urgent", todo: "À faire", watch: "À surveiller" };
+  actions.forEach((action) => {
+    const row = document.createElement("article");
+    row.className = `accueil-todo-row is-${action.level}`;
+    row.dataset.todoType = action.type;
+
+    const badge = document.createElement("strong");
+    badge.className = "accueil-todo-level";
+    badge.textContent = levelLabels[action.level] || "À faire";
+
+    const content = document.createElement("div");
+    content.className = "accueil-todo-content";
+    const label = document.createElement("span");
+    label.className = "accueil-todo-label";
+    label.textContent = action.label;
+    const meta = document.createElement("small");
+    meta.textContent = `${action.personName} · ${action.context}`;
+    content.append(label, meta);
+
+    const button = document.createElement("button");
+    button.className = "secondary-action compact-action";
+    button.type = "button";
+    button.textContent = action.target === "prospect" ? "Voir le prospect" : "Voir le dossier";
+    button.addEventListener("click", () => openTodoTarget(action));
+
+    row.append(badge, content, button);
+    todoList.append(row);
+  });
 }
 
 function parseDateValue(value) {
@@ -851,20 +1002,7 @@ function renderPilotage() {
   activeCount.textContent = String(activeStudents.length);
   urgentCount.textContent = String(urgentTotal);
 
-  const questionnairesPending = activeStudents.filter((student) => student.statutSuivi === "questionnaire-envoye").length;
-  const studentsToRelance = activeStudents.filter((student) => student.statutSuivi === "a-relancer").length;
-  const memoiresToAnalyze = activeStudents.filter((student) => student.statutSuivi === "memoire-importe").length;
-
-  todoList.textContent = "";
-  appendTaskRow(todoList, "Questionnaires en attente de réponse", questionnairesPending, "questionnaire-envoye", "is-waiting");
-  appendTaskRow(todoList, "À relancer", studentsToRelance, "a-relancer", "is-relance");
-  appendTaskRow(todoList, "Mémoires à analyser", memoiresToAnalyze, "memoire-importe", "is-analysis");
-  if (!todoList.children.length) {
-    const empty = document.createElement("p");
-    empty.className = "empty-state";
-    empty.textContent = "Rien d’urgent à traiter pour le moment.";
-    todoList.append(empty);
-  }
+  renderTodoActions(collectTodoActions(activeStudents, storage.getActiveProspects?.() || storage.getProspects?.() || []));
   renderDeadlines(activeStudents);
   renderNotifications(activeStudents);
 }

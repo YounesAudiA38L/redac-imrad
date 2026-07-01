@@ -2738,25 +2738,51 @@ p {
 
 .accueil-todo-row {
   width: 100%;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   border-top: 0;
   border-right: 0;
   border-bottom: 0;
   border-radius: 0;
   color: inherit;
-  cursor: pointer;
   text-align: left;
 }
 
-.accueil-todo-row:hover,
-.accueil-todo-row:focus-visible {
+.accueil-todo-row:hover {
   filter: brightness(0.975);
+}
+
+.accueil-todo-row:focus-within {
   outline: 2px solid rgba(154, 107, 21, 0.2);
   outline-offset: 2px;
 }
 
-.accueil-todo-row span {
+.accueil-todo-row.is-urgent {
+  border-left-color: #bc7159;
+  background: #fbf1ed;
+}
+
+.accueil-todo-row.is-watch {
+  border-left-color: #7194b2;
+  background: #eef4f8;
+}
+
+.accueil-todo-content {
+  display: grid;
+  gap: 3px;
+}
+
+.accueil-todo-label {
   font-weight: 700;
+}
+
+.accueil-todo-content small {
+  color: #5f6964;
+}
+
+.accueil-todo-level {
+  border-radius: 999px;
+  padding: 6px 9px;
+  white-space: nowrap;
 }
 
 .accueil-todo-list .empty-state,
