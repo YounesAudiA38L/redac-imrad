@@ -14,6 +14,26 @@
   const PROSPECT_STATUSES = new Set(["nouveau", "a-relancer", "interesse", "non-interesse", "en-reflexion", "transforme", "archive"]);
   const QUESTIONNAIRE_STATUSES = new Set(["a-envoyer", "envoye", "repondu"]);
   const STUDENT_PARCOURS = new Set(["point-memoire", "k4", "k5", "rattrapage"]);
+  const AI_FIELD_LABELS = Object.freeze({
+    titreMemoire: "Titre du mémoire",
+    typeDocument: "Type de document",
+    typeMemoire: "Type de mémoire",
+    questionRecherche: "Question de recherche",
+    population: "Population étudiée",
+    interventionExposition: "Intervention ou exposition",
+    comparateur: "Comparateur",
+    criteresJugement: "Critères de jugement",
+    indicateurs: "Indicateurs",
+    pico: "PICO",
+    criteresInclusion: "Critères d’inclusion",
+    criteresExclusion: "Critères d’exclusion",
+    methode: "Méthode",
+    basesDonnees: "Bases de données",
+    motsCles: "Mots-clés",
+    resultatsPrincipaux: "Résultats principaux",
+    limites: "Limites",
+    pointsAVerifier: "Points à vérifier par Audrey",
+  });
 
   function createEmptyProspectResponse() {
     return {
@@ -48,6 +68,24 @@
       settings: {},
       notifications: [],
       reports: [],
+      aiLearningRules: [],
+    };
+  }
+
+  function normalizeAiLearningRule(rule) {
+    const now = new Date().toISOString();
+    return {
+      id: rule?.id || `rule_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      champ: String(rule?.champ || "").trim(),
+      erreurIA: String(rule?.erreurIA || "").trim(),
+      correctionAudrey: String(rule?.correctionAudrey || "").trim(),
+      regle: String(rule?.regle || "").trim(),
+      sourceStudentId: String(rule?.sourceStudentId || "").trim(),
+      sourceMemoireTitre: String(rule?.sourceMemoireTitre || "").trim(),
+      createdAt: rule?.createdAt || now,
+      updatedAt: rule?.updatedAt || rule?.createdAt || now,
+      usedCount: Number(rule?.usedCount) || 0,
+      active: rule?.active !== false,
     };
   }
 
@@ -176,6 +214,7 @@
         settings: stored?.settings && typeof stored.settings === "object" ? stored.settings : empty.settings,
         notifications: Array.isArray(stored?.notifications) ? stored.notifications : empty.notifications,
         reports: Array.isArray(stored?.reports) ? stored.reports : empty.reports,
+        aiLearningRules: Array.isArray(stored?.aiLearningRules) ? stored.aiLearningRules.map(normalizeAiLearningRule) : empty.aiLearningRules,
       };
     } catch {
       return createEmptyDatabase();
@@ -189,6 +228,7 @@
       settings: database.settings && typeof database.settings === "object" ? database.settings : {},
       notifications: Array.isArray(database.notifications) ? database.notifications : [],
       reports: Array.isArray(database.reports) ? database.reports : [],
+      aiLearningRules: Array.isArray(database.aiLearningRules) ? database.aiLearningRules.map(normalizeAiLearningRule) : [],
     };
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
@@ -922,6 +962,73 @@
     return getDatabase().students.filter((student) => student.parcours === parcours && isArchivedStudent(student));
   }
 
+  function getAiLearningRules() {
+    return getDatabase().aiLearningRules;
+  }
+
+  function getActiveAiLearningRules() {
+    return getAiLearningRules().filter((rule) => rule.active !== false && rule.regle);
+  }
+
+  function upsertAiLearningRule(ruleData) {
+    const regle = String(ruleData?.regle || "").trim();
+    const champ = String(ruleData?.champ || "").trim();
+    if (!champ || !regle) return null;
+    const database = getDatabase();
+    const normalizedRuleText = regle.toLocaleLowerCase("fr-FR");
+    const existingIndex = database.aiLearningRules.findIndex((rule) => (
+      rule.active !== false
+      && rule.champ === champ
+      && String(rule.regle || "").trim().toLocaleLowerCase("fr-FR") === normalizedRuleText
+    ));
+    const now = new Date().toISOString();
+    if (existingIndex >= 0) {
+      database.aiLearningRules[existingIndex] = normalizeAiLearningRule({
+        ...database.aiLearningRules[existingIndex],
+        erreurIA: String(ruleData.erreurIA || database.aiLearningRules[existingIndex].erreurIA || "").trim(),
+        correctionAudrey: String(ruleData.correctionAudrey || database.aiLearningRules[existingIndex].correctionAudrey || "").trim(),
+        sourceStudentId: String(ruleData.sourceStudentId || database.aiLearningRules[existingIndex].sourceStudentId || "").trim(),
+        sourceMemoireTitre: String(ruleData.sourceMemoireTitre || database.aiLearningRules[existingIndex].sourceMemoireTitre || "").trim(),
+        updatedAt: now,
+      });
+      saveDatabase(database);
+      return database.aiLearningRules[existingIndex];
+    }
+    const rule = normalizeAiLearningRule({
+      ...ruleData,
+      id: `rule_${global.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`}`,
+      createdAt: now,
+      updatedAt: now,
+      usedCount: 0,
+      active: true,
+    });
+    database.aiLearningRules.push(rule);
+    saveDatabase(database);
+    return rule;
+  }
+
+  function deactivateAiLearningRule(id) {
+    const database = getDatabase();
+    const index = database.aiLearningRules.findIndex((rule) => rule.id === id);
+    if (index < 0) return null;
+    database.aiLearningRules[index] = normalizeAiLearningRule({
+      ...database.aiLearningRules[index],
+      active: false,
+      updatedAt: new Date().toISOString(),
+    });
+    saveDatabase(database);
+    return database.aiLearningRules[index];
+  }
+
+  function getActiveAiLearningRulesText() {
+    const rules = getActiveAiLearningRules();
+    if (!rules.length) return "";
+    return [
+      "Règles apprises à partir des corrections d’Audrey :",
+      ...rules.map((rule) => `- [${AI_FIELD_LABELS[rule.champ] || rule.champ}] ${rule.regle}`),
+    ].join("\n");
+  }
+
   global.RedacStorage = Object.freeze({
     getDatabase,
     saveDatabase,
@@ -945,6 +1052,11 @@
     getActiveStudents,
     getArchivedStudents,
     getArchivedStudentsByParcours,
+    getAiLearningRules,
+    getActiveAiLearningRules,
+    upsertAiLearningRule,
+    deactivateAiLearningRule,
+    getActiveAiLearningRulesText,
     getStatutSuiviLabel,
     getNiveauEcheance,
     isUrgent,

@@ -950,6 +950,124 @@ p {
   min-width: 156px;
 }
 
+.memoire-ai-workspace {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.memoire-ai-workspace > .secondary-action {
+  justify-self: start;
+}
+
+.memoire-ai-panel .analysis-grid {
+  grid-template-columns: 1fr;
+}
+
+.memoire-ai-field {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.memoire-ai-field summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.memoire-ai-field[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.memoire-ai-field-title {
+  min-width: 0;
+}
+
+.memoire-ai-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #fbfcfb;
+}
+
+.memoire-ai-field-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.memoire-ai-field dl {
+  margin: 0;
+}
+
+.memoire-ai-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.memoire-ai-field .student-card-actions {
+  flex-wrap: wrap;
+}
+
+.memoire-ai-rules-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.memoire-ai-rules-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.memoire-ai-rules-list {
+  display: grid;
+  gap: 10px;
+}
+
+.memoire-ai-rule {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.memoire-ai-rule h5,
+.memoire-ai-rule p {
+  margin: 0;
+}
+
+.memoire-ai-rule .secondary-action {
+  justify-self: start;
+}
+
 .empty-state {
   margin: 0;
   padding: 16px;

@@ -61,10 +61,32 @@
   // TODO: créer les boutons listés dans FUTURE_BUTTON_TODOS uniquement lorsque les fonctionnalités correspondantes existent.
   const statusValues = ["nouveau", "questionnaire-envoye", "questionnaire-recu", "memoire-importe", "analyse-en-cours", "retour-envoye", "a-relancer", "termine"];
   const parcoursTransferOptions = [
+    { value: "point-memoire", label: "Point Mémoire" },
     { value: "k4", label: "K4" },
     { value: "k5", label: "K5" },
     { value: "rattrapage", label: "Rattrapage" },
   ];
+  const aiMemoireFields = [
+    { key: "titreMemoire", label: "Titre du mémoire" },
+    { key: "typeDocument", label: "Type de document" },
+    { key: "typeMemoire", label: "Type de mémoire" },
+    { key: "questionRecherche", label: "Question de recherche" },
+    { key: "population", label: "Population étudiée" },
+    { key: "interventionExposition", label: "Intervention ou exposition" },
+    { key: "comparateur", label: "Comparateur" },
+    { key: "criteresJugement", label: "Critères de jugement" },
+    { key: "indicateurs", label: "Indicateurs" },
+    { key: "pico", label: "PICO" },
+    { key: "criteresInclusion", label: "Critères d’inclusion" },
+    { key: "criteresExclusion", label: "Critères d’exclusion" },
+    { key: "methode", label: "Méthode" },
+    { key: "basesDonnees", label: "Bases de données" },
+    { key: "motsCles", label: "Mots-clés" },
+    { key: "resultatsPrincipaux", label: "Résultats principaux" },
+    { key: "limites", label: "Limites" },
+    { key: "pointsAVerifier", label: "Points à vérifier par Audrey" },
+  ];
+  const aiFinalStatuses = new Set(["valide", "corrige", "non_retrouve", "refuse"]);
   let termeRechercheParcours = "";
   let statutFiltreParcours = "tous";
   let urgenceFiltre = "";
@@ -75,6 +97,7 @@
   let parcoursStatus = null;
   let openTransferDropdown = null;
   const historyOpenStudentIds = new Set();
+  let aiMemoireOpenStudentId = "";
 
   function normalizeSearchValue(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
@@ -240,7 +263,13 @@
 
   function hasStudentHistory(student) {
     const parcoursData = student?.donneesParcours || {};
-    return Boolean(student?.sourceProspectId || parcoursData.origineProspect || parcoursData.questionnaireProspect);
+    return Boolean(
+      student?.sourceProspectId
+      || parcoursData.origineProspect
+      || parcoursData.questionnaireProspect
+      || (Array.isArray(parcoursData.historiqueDossier) && parcoursData.historiqueDossier.length)
+      || parcoursData.transfertParcours,
+    );
   }
 
   function addHistoryDetail(list, label, value) {
@@ -251,6 +280,394 @@
 
   function formatHistoryDate(value) {
     return value ? formatDate(value) : "";
+  }
+
+  function createDefaultMemoireFile(student) {
+    return {
+      nom: student?.memoireImporte?.nom || "",
+      type: student?.memoireImporte?.type || "",
+      taille: student?.memoireImporte?.taille || "",
+      importeLe: student?.memoireImporte?.importeLe || student?.dateModification || "",
+      texteStockage: "",
+      texteId: "",
+    };
+  }
+
+  function createDefaultAiField() {
+    return {
+      propositionIA: "",
+      valeurValidee: "",
+      statutValidation: "propose",
+      correctionAudrey: "",
+      enseignementIA: "",
+      updatedAt: "",
+    };
+  }
+
+  function normalizeAiField(field) {
+    const source = field && typeof field === "object" ? field : {};
+    return {
+      propositionIA: source.propositionIA || "",
+      valeurValidee: source.valeurValidee || "",
+      statutValidation: source.statutValidation || "propose",
+      correctionAudrey: source.correctionAudrey || source.commentaireAudrey || "",
+      enseignementIA: source.enseignementIA || source.raisonRefus || "",
+      updatedAt: source.updatedAt || "",
+    };
+  }
+
+  function normalizeMemoireAnalysis(student) {
+    const donneesMemoire = student?.donneesMemoire && typeof student.donneesMemoire === "object" ? student.donneesMemoire : {};
+    const analyseIA = donneesMemoire.analyseIA && typeof donneesMemoire.analyseIA === "object" ? donneesMemoire.analyseIA : {};
+    const propositions = analyseIA.propositions && typeof analyseIA.propositions === "object" ? analyseIA.propositions : {};
+    const normalizedPropositions = {};
+    aiMemoireFields.forEach((field) => {
+      normalizedPropositions[field.key] = normalizeAiField(propositions[field.key]);
+    });
+
+    return {
+      fichier: {
+        ...createDefaultMemoireFile(student),
+        ...(donneesMemoire.fichier && typeof donneesMemoire.fichier === "object" ? donneesMemoire.fichier : {}),
+      },
+      analyseIA: {
+        statut: analyseIA.statut || "non_lancee",
+        modele: analyseIA.modele || "",
+        genereLe: analyseIA.genereLe || "",
+        propositions: normalizedPropositions,
+        apprentissagesIA: Array.isArray(analyseIA.apprentissagesIA) ? [...analyseIA.apprentissagesIA] : [],
+      },
+    };
+  }
+
+  function calculateAiGlobalStatus(analyseIA) {
+    const fieldsWithProposal = aiMemoireFields
+      .map((field) => analyseIA.propositions[field.key])
+      .filter((field) => String(field?.propositionIA || "").trim());
+    if (!fieldsWithProposal.length) return "non_lancee";
+    const finalCount = fieldsWithProposal.filter((field) => aiFinalStatuses.has(field.statutValidation)).length;
+    if (finalCount === 0) return "proposee";
+    if (finalCount === fieldsWithProposal.length) return "validee";
+    return "partiellement_validee";
+  }
+
+  function ensureMemoireAnalysis(student) {
+    if (student?.donneesMemoire?.analyseIA) return student;
+    const normalized = normalizeMemoireAnalysis(student);
+    return storage.updateStudent(student.id, {
+      donneesMemoire: {
+        ...(student.donneesMemoire || {}),
+        fichier: normalized.fichier,
+        analyseIA: {
+          ...normalized.analyseIA,
+          statut: "non_lancee",
+        },
+      },
+    });
+  }
+
+  function updateMemoireAnalysis(student, updater) {
+    const normalized = normalizeMemoireAnalysis(student);
+    const nextAnalyse = {
+      ...normalized.analyseIA,
+      propositions: { ...normalized.analyseIA.propositions },
+      apprentissagesIA: [...normalized.analyseIA.apprentissagesIA],
+    };
+    updater(nextAnalyse);
+    nextAnalyse.statut = calculateAiGlobalStatus(nextAnalyse);
+    storage.updateStudent(student.id, {
+      donneesMemoire: {
+        ...(student.donneesMemoire || {}),
+        fichier: normalized.fichier,
+        analyseIA: nextAnalyse,
+      },
+    });
+    render();
+  }
+
+  function upsertAiLearning(analyseIA, fieldKey, enseignementIA) {
+    const text = String(enseignementIA || "").trim();
+    const existingIndex = analyseIA.apprentissagesIA.findIndex((item) => item?.champ === fieldKey);
+    if (!text) {
+      if (existingIndex >= 0) analyseIA.apprentissagesIA.splice(existingIndex, 1);
+      return;
+    }
+    const nextLearning = {
+      champ: fieldKey,
+      enseignementIA: text,
+      updatedAt: new Date().toISOString(),
+    };
+    if (existingIndex >= 0) {
+      analyseIA.apprentissagesIA[existingIndex] = {
+        ...analyseIA.apprentissagesIA[existingIndex],
+        ...nextLearning,
+      };
+    } else {
+      analyseIA.apprentissagesIA.push(nextLearning);
+    }
+  }
+
+  function getMemoireTitleForAiLearning(student, analyseIA) {
+    const titleField = normalizeAiField(analyseIA?.propositions?.titreMemoire);
+    return titleField.valeurValidee || titleField.propositionIA || student?.memoireImporte?.nom || "";
+  }
+
+  function saveGlobalAiLearningRule(student, analyseIA, fieldDefinition, fieldState) {
+    const ruleText = String(fieldState.enseignementIA || "").trim();
+    if (!ruleText || typeof storage.upsertAiLearningRule !== "function") return;
+    storage.upsertAiLearningRule({
+      champ: fieldDefinition.key,
+      erreurIA: fieldState.propositionIA || "",
+      correctionAudrey: fieldState.correctionAudrey || fieldState.valeurValidee || "",
+      regle: ruleText,
+      sourceStudentId: student.id,
+      sourceMemoireTitre: getMemoireTitleForAiLearning(student, analyseIA),
+    });
+  }
+
+  function createAiLearningRulesPanel() {
+    const wrapper = document.createElement("details");
+    wrapper.className = "memoire-ai-rules-panel";
+
+    const summary = document.createElement("summary");
+    summary.textContent = "Règles IA apprises";
+    wrapper.append(summary);
+
+    const rules = typeof storage.getActiveAiLearningRules === "function" ? storage.getActiveAiLearningRules() : [];
+    if (!rules.length) {
+      const empty = document.createElement("p");
+      empty.className = "helper-text";
+      empty.textContent = "Aucune règle IA globale active pour le moment.";
+      wrapper.append(empty);
+      return wrapper;
+    }
+
+    const list = document.createElement("div");
+    list.className = "memoire-ai-rules-list";
+    rules.forEach((rule) => {
+      const item = document.createElement("article");
+      item.className = "memoire-ai-rule";
+      const title = document.createElement("h5");
+      title.textContent = aiMemoireFields.find((field) => field.key === rule.champ)?.label || rule.champ || "Champ IA";
+      const text = document.createElement("p");
+      text.textContent = rule.regle;
+      item.append(title, text);
+      if (rule.correctionAudrey) {
+        const correction = document.createElement("p");
+        correction.className = "helper-text";
+        correction.textContent = `Correction d’origine : ${rule.correctionAudrey}`;
+        item.append(correction);
+      }
+      const disable = document.createElement("button");
+      disable.type = "button";
+      disable.className = "secondary-action";
+      disable.textContent = "Désactiver la règle";
+      disable.addEventListener("click", () => {
+        if (typeof storage.deactivateAiLearningRule === "function") storage.deactivateAiLearningRule(rule.id);
+        render();
+      });
+      item.append(disable);
+      list.append(item);
+    });
+    wrapper.append(list);
+    return wrapper;
+  }
+
+  function createAiTextArea(labelText, value) {
+    const label = document.createElement("label");
+    label.className = "field";
+    const labelTitle = document.createElement("span");
+    labelTitle.textContent = labelText;
+    const textarea = document.createElement("textarea");
+    textarea.rows = 3;
+    textarea.value = value || "";
+    label.append(labelTitle, textarea);
+    return { label, textarea };
+  }
+
+  function createAiTextHelp(text) {
+    const help = document.createElement("span");
+    help.className = "helper-text";
+    help.textContent = text;
+    return help;
+  }
+
+  function getAiFieldStatusLabel(status) {
+    const labels = {
+      propose: "À relire",
+      valide: "Validé",
+      corrige: "Corrigé",
+      non_retrouve: "Non retrouvé",
+      refuse: "Refusé",
+    };
+    return labels[status] || "À relire";
+  }
+
+  function createAiFieldCard(student, fieldDefinition, fieldValue) {
+    const card = document.createElement("details");
+    card.className = "memoire-ai-field";
+    const summary = document.createElement("summary");
+    const title = document.createElement("span");
+    title.className = "memoire-ai-field-title";
+    title.textContent = fieldDefinition.label;
+    const statusBadge = document.createElement("span");
+    statusBadge.className = "memoire-ai-status";
+    statusBadge.textContent = getAiFieldStatusLabel(fieldValue.statutValidation);
+    summary.append(title, statusBadge);
+
+    const body = document.createElement("div");
+    body.className = "memoire-ai-field-body";
+
+    const proposal = createAiTextArea("Proposition IA", fieldValue.propositionIA);
+    const correction = createAiTextArea("Valeur corrigée / validée par Audrey", fieldValue.correctionAudrey || fieldValue.valeurValidee);
+    const aiRule = createAiTextArea("Règle IA pour les prochains mémoires, optionnelle", fieldValue.enseignementIA);
+    aiRule.label.append(createAiTextHelp("Exemple : Ne pas inventer de comparateur si aucun comparateur n’est mentionné."));
+    const refusalReason = createAiTextArea("Pourquoi cette proposition est refusée ?", fieldValue.statutValidation === "refuse" ? fieldValue.enseignementIA : "");
+    refusalReason.label.append(createAiTextHelp("Optionnel. Une raison courte suffit."));
+
+    const details = document.createElement("dl");
+    addDetail(details, "Valeur validée", fieldValue.valeurValidee);
+    addDetail(details, "Statut", fieldValue.statutValidation);
+    if (fieldValue.enseignementIA) addDetail(details, "Enseignement IA", fieldValue.enseignementIA);
+
+    const actions = document.createElement("div");
+    actions.className = "student-card-actions";
+    const status = document.createElement("p");
+    status.className = "form-message memoire-ai-field-status";
+    status.setAttribute("role", "status");
+    status.hidden = true;
+
+    const setFieldStatus = (message) => {
+      status.textContent = message;
+      status.hidden = !message;
+    };
+
+    const saveProposal = document.createElement("button");
+    saveProposal.type = "button";
+    saveProposal.className = "secondary-action";
+    saveProposal.textContent = "Enregistrer la proposition";
+    saveProposal.addEventListener("click", () => {
+      updateMemoireAnalysis(student, (analyseIA) => {
+        const current = normalizeAiField(analyseIA.propositions[fieldDefinition.key]);
+        const nextProposal = proposal.textarea.value.trim();
+        current.propositionIA = nextProposal;
+        current.correctionAudrey = correction.textarea.value.trim();
+        current.enseignementIA = aiRule.textarea.value.trim();
+        current.updatedAt = new Date().toISOString();
+        analyseIA.propositions[fieldDefinition.key] = current;
+      });
+    });
+
+    const validate = document.createElement("button");
+    validate.type = "button";
+    validate.className = "secondary-action";
+    validate.textContent = "Valider";
+    validate.addEventListener("click", () => {
+      updateMemoireAnalysis(student, (analyseIA) => {
+        const current = normalizeAiField(analyseIA.propositions[fieldDefinition.key]);
+        current.correctionAudrey = correction.textarea.value.trim();
+        current.enseignementIA = aiRule.textarea.value.trim();
+        if (!String(current.valeurValidee || "").trim()) current.valeurValidee = current.propositionIA || "";
+        current.statutValidation = "valide";
+        current.updatedAt = new Date().toISOString();
+        analyseIA.propositions[fieldDefinition.key] = current;
+      });
+    });
+
+    const correct = document.createElement("button");
+    correct.type = "button";
+    correct.className = "secondary-action";
+    correct.textContent = "Corriger";
+    correct.addEventListener("click", () => {
+      const correctedValue = correction.textarea.value.trim();
+      if (!correctedValue) {
+        setFieldStatus("Renseigne d’abord la valeur corrigée dans le champ prévu.");
+        return;
+      }
+      setFieldStatus("");
+      updateMemoireAnalysis(student, (analyseIA) => {
+        const current = normalizeAiField(analyseIA.propositions[fieldDefinition.key]);
+        current.valeurValidee = correctedValue;
+        current.correctionAudrey = correctedValue;
+        current.enseignementIA = aiRule.textarea.value.trim();
+        current.statutValidation = "corrige";
+        current.updatedAt = new Date().toISOString();
+        analyseIA.propositions[fieldDefinition.key] = current;
+        upsertAiLearning(analyseIA, fieldDefinition.key, current.enseignementIA);
+        saveGlobalAiLearningRule(student, analyseIA, fieldDefinition, current);
+      });
+    });
+
+    const notFound = document.createElement("button");
+    notFound.type = "button";
+    notFound.className = "secondary-action";
+    notFound.textContent = "Non retrouvé";
+    notFound.addEventListener("click", () => {
+      updateMemoireAnalysis(student, (analyseIA) => {
+        const current = normalizeAiField(analyseIA.propositions[fieldDefinition.key]);
+        current.valeurValidee = "";
+        current.correctionAudrey = correction.textarea.value.trim();
+        current.enseignementIA = aiRule.textarea.value.trim();
+        current.statutValidation = "non_retrouve";
+        current.updatedAt = new Date().toISOString();
+        analyseIA.propositions[fieldDefinition.key] = current;
+      });
+    });
+
+    const refuse = document.createElement("button");
+    refuse.type = "button";
+    refuse.className = "destructive-action";
+    refuse.textContent = "Refuser";
+    refuse.addEventListener("click", () => {
+      updateMemoireAnalysis(student, (analyseIA) => {
+        const current = normalizeAiField(analyseIA.propositions[fieldDefinition.key]);
+        current.correctionAudrey = correction.textarea.value.trim();
+        current.enseignementIA = aiRule.textarea.value.trim() || refusalReason.textarea.value.trim();
+        current.statutValidation = "refuse";
+        current.updatedAt = new Date().toISOString();
+        analyseIA.propositions[fieldDefinition.key] = current;
+        upsertAiLearning(analyseIA, fieldDefinition.key, current.enseignementIA);
+        saveGlobalAiLearningRule(student, analyseIA, fieldDefinition, current);
+      });
+    });
+
+    actions.append(saveProposal, validate, correct, notFound, refuse);
+    body.append(proposal.label, details, correction.label, aiRule.label, refusalReason.label, status, actions);
+    card.append(summary, body);
+    return card;
+  }
+
+  function createMemoireAiPanel(student) {
+    const normalized = normalizeMemoireAnalysis(student);
+    const section = document.createElement("section");
+    section.className = "memoire-ai-workspace memoire-ai-panel";
+
+    const title = document.createElement("h4");
+    title.textContent = `Analyse IA du mémoire — ${`${student.prenom || ""} ${student.nom || ""}`.trim() || "Étudiant sans nom"}`;
+    const help = document.createElement("p");
+    help.className = "helper-text";
+    help.textContent = "Les corrections Audrey serviront plus tard à améliorer les consignes données à l’IA locale. Elles ne réentraînent pas automatiquement le modèle.";
+    const close = document.createElement("button");
+    close.className = "secondary-action";
+    close.type = "button";
+    close.textContent = "Fermer l’analyse";
+    close.addEventListener("click", () => {
+      aiMemoireOpenStudentId = "";
+      render();
+    });
+
+    const status = document.createElement("dl");
+    addDetail(status, "Statut global", calculateAiGlobalStatus(normalized.analyseIA));
+    addDetail(status, "Modèle", normalized.analyseIA.modele || "Aucun modèle connecté");
+
+    const grid = document.createElement("div");
+    grid.className = "analysis-grid";
+    aiMemoireFields.forEach((field) => {
+      grid.append(createAiFieldCard(student, field, normalized.analyseIA.propositions[field.key]));
+    });
+
+    section.append(title, help, createAiLearningRulesPanel(), close, status, grid);
+    return section;
   }
 
   function createStudentHistoryPanel(student) {
@@ -285,7 +702,34 @@
     addHistoryDetail(details, "Aide souhaitée", questionnaire.aideSouhaitee);
     addHistoryDetail(details, "Notes disponibles", student.notesInitiales);
 
+    const changes = Array.isArray(parcoursData.historiqueDossier)
+      ? parcoursData.historiqueDossier.filter((item) => item?.type === "changement_parcours")
+      : [];
+    if (!changes.length && parcoursData.transfertParcours) {
+      changes.push({
+        type: "changement_parcours",
+        ancienParcours: parcoursData.transfertParcours.depuis,
+        nouveauParcours: parcoursData.transfertParcours.vers,
+        date: parcoursData.transfertParcours.date,
+        note: parcoursData.transfertParcours.note || "",
+      });
+    }
     section.append(title, subtitle, details);
+
+    if (changes.length) {
+      const changesTitle = document.createElement("p");
+      changesTitle.className = "helper-text";
+      changesTitle.textContent = "Changements de parcours";
+      const changesList = document.createElement("dl");
+      changes.forEach((change) => {
+        const oldLabel = parcoursLabels[change.ancienParcours] || change.ancienParcours || "Parcours non renseigné";
+        const newLabel = parcoursLabels[change.nouveauParcours] || change.nouveauParcours || "Parcours non renseigné";
+        addHistoryDetail(changesList, "Changement", `${oldLabel} → ${newLabel}`);
+        addHistoryDetail(changesList, "Date du changement", formatHistoryDate(change.date));
+        addHistoryDetail(changesList, "Note", change.note);
+      });
+      section.append(changesTitle, changesList);
+    }
     return section;
   }
 
@@ -366,25 +810,31 @@
 
   function changeStudentParcours(student, targetParcours) {
     const targetLabel = parcoursLabels[targetParcours] || targetParcours;
-    const confirmed = window.confirm(`Confirmer le passage de cet étudiant vers ${targetLabel} ?`);
+    const currentLabel = parcoursLabels[student.parcours] || student.parcours || "Parcours non renseigné";
+    const confirmed = window.confirm(`Changer le parcours de cet étudiant de ${currentLabel} vers ${targetLabel} ?`);
     if (!confirmed) return;
 
     const now = new Date().toISOString();
     const donneesParcours = student.donneesParcours && typeof student.donneesParcours === "object"
       ? student.donneesParcours
       : {};
+    const historiqueDossier = Array.isArray(donneesParcours.historiqueDossier)
+      ? [...donneesParcours.historiqueDossier]
+      : [];
+    historiqueDossier.push({
+      type: "changement_parcours",
+      ancienParcours: student.parcours || "",
+      nouveauParcours: targetParcours,
+      date: now,
+      note: "",
+    });
 
     storage.updateStudent(student.id, {
       parcours: targetParcours,
       dateModification: now,
       donneesParcours: {
         ...donneesParcours,
-        transfertParcours: {
-          ...(donneesParcours.transfertParcours || {}),
-          depuis: "point-memoire",
-          vers: targetParcours,
-          date: now,
-        },
+        historiqueDossier,
       },
     });
     setParcoursStatus(`L’étudiant a été déplacé vers ${targetLabel}.`);
@@ -405,7 +855,7 @@
     menu.className = "parcours-transfer-menu dropdown-menu";
     menu.hidden = true;
 
-    parcoursTransferOptions.forEach((option) => {
+    parcoursTransferOptions.filter((option) => option.value !== student.parcours).forEach((option) => {
       const choice = document.createElement("button");
       choice.type = "button";
       choice.textContent = option.label;
@@ -486,7 +936,21 @@
       actions.append(history);
     }
 
-    if (student.parcours === "point-memoire" && !isStudentArchived(student)) {
+    if (!isStudentArchived(student)) {
+      const aiMemoire = document.createElement("button");
+      aiMemoire.className = "secondary-action";
+      aiMemoire.type = "button";
+      aiMemoire.textContent = aiMemoireOpenStudentId === student.id ? "Masquer l’analyse IA" : "Analyse IA du mémoire";
+      aiMemoire.addEventListener("click", () => {
+        if (aiMemoireOpenStudentId === student.id) {
+          aiMemoireOpenStudentId = "";
+        } else {
+          ensureMemoireAnalysis(student);
+          aiMemoireOpenStudentId = student.id;
+        }
+        render();
+      });
+      actions.append(aiMemoire);
       actions.append(createParcoursTransferControl(student));
     }
 
@@ -646,7 +1110,12 @@
     } else if (students.length === 0) {
       const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = urgenceFiltre ? "Aucun étudiant urgent dans ce parcours pour le moment." : "Aucun étudiant ne correspond à ta recherche."; container.append(empty);
     } else {
-      students.forEach((student) => container.append(createCard(student)));
+      students.forEach((student) => {
+        container.append(createCard(student));
+        if (aiMemoireOpenStudentId === student.id && !isStudentArchived(student)) {
+          container.append(createMemoireAiPanel(student));
+        }
+      });
     }
 
     window.dispatchEvent(new CustomEvent("redac:parcours-rendered", { detail: { parcours } }));
